@@ -1,4 +1,4 @@
-# SAKSHA - Crime Intelligence & Analytical Platform for Karnataka State Police
+# Drishyam - Crime Intelligence & Analytical Platform for Karnataka State Police
 
 ## Problem Statement
 
