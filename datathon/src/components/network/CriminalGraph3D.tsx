@@ -1,76 +1,141 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
-import { AlertTriangle, Maximize2, ChevronUp, ChevronDown, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  AlertTriangle,
+  Maximize2,
+  ChevronUp,
+  ChevronDown,
+  Crosshair,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Layers,
+  Sparkles,
+  Zap,
+  X,
+} from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
 
 // =========================================================================
-// 3D GLASS GEOMETRIES & MATERIALS CACHE (SUBTLE 3D GLASS / CRYSTAL EFFECT)
+// 3D GLASS GEOMETRIES & MATERIALS CACHE (SUBSTANTIAL & HIGH-DEFINITION)
 // =========================================================================
 
-// Shared 3D geometries for multi-source intelligence entities
+// Shared 3D geometries for multi-source intelligence entities — enlarged crystal scales for high visual impact
 const GEOMETRIES: Record<string, { outer: THREE.BufferGeometry; inner: THREE.BufferGeometry }> = {
   // Suspect: Red sphere
   suspect: {
-    outer: new THREE.SphereGeometry(6.5, 24, 24),
-    inner: new THREE.SphereGeometry(3.6, 16, 16),
+    outer: new THREE.SphereGeometry(15.0, 24, 24),
+    inner: new THREE.SphereGeometry(8.0, 16, 16),
   },
   // Offender: Orange sphere
   offender: {
-    outer: new THREE.SphereGeometry(7.5, 24, 24),
-    inner: new THREE.SphereGeometry(4.2, 16, 16),
+    outer: new THREE.SphereGeometry(16.0, 24, 24),
+    inner: new THREE.SphereGeometry(8.5, 16, 16),
   },
   // CDR: Cyan hexagon (6-sided cylinder)
   cdr: {
-    outer: new THREE.CylinderGeometry(6.2, 6.2, 5.5, 6),
-    inner: new THREE.CylinderGeometry(3.4, 3.4, 3.2, 6),
+    outer: new THREE.CylinderGeometry(14.0, 14.0, 10.0, 6),
+    inner: new THREE.CylinderGeometry(7.5, 7.5, 6.0, 6),
   },
   // Financial Transaction: Amber / Gold diamond (Octahedron)
   financial_transaction: {
-    outer: new THREE.OctahedronGeometry(7.2, 0),
-    inner: new THREE.OctahedronGeometry(4.0, 0),
+    outer: new THREE.OctahedronGeometry(15.0, 0),
+    inner: new THREE.OctahedronGeometry(8.0, 0),
   },
   // Surveillance Report: Purple cube (Box)
   surveillance_report: {
-    outer: new THREE.BoxGeometry(8.5, 8.5, 8.5),
-    inner: new THREE.BoxGeometry(4.5, 4.5, 4.5),
+    outer: new THREE.BoxGeometry(15.0, 15.0, 15.0),
+    inner: new THREE.BoxGeometry(8.0, 8.0, 8.0),
   },
   // Social Media Intel: Blue octagon (8-sided cylinder)
   social_media_intel: {
-    outer: new THREE.CylinderGeometry(6.5, 6.5, 5.5, 8),
-    inner: new THREE.CylinderGeometry(3.5, 3.5, 3.2, 8),
+    outer: new THREE.CylinderGeometry(14.0, 14.0, 10.0, 8),
+    inner: new THREE.CylinderGeometry(7.5, 7.5, 6.0, 8),
   },
   case: {
-    outer: new THREE.BoxGeometry(7.0, 7.0, 7.0),
-    inner: new THREE.BoxGeometry(3.5, 3.5, 3.5),
+    outer: new THREE.BoxGeometry(15.0, 15.0, 15.0),
+    inner: new THREE.BoxGeometry(8.0, 8.0, 8.0),
   },
   location: {
-    outer: new THREE.ConeGeometry(6.0, 9.0, 6),
-    inner: new THREE.ConeGeometry(3.0, 5.0, 6),
+    outer: new THREE.ConeGeometry(13.5, 19.0, 6),
+    inner: new THREE.ConeGeometry(7.0, 10.0, 6),
   },
   victim: {
-    outer: new THREE.SphereGeometry(5.2, 16, 16),
-    inner: new THREE.SphereGeometry(2.8, 12, 12),
+    outer: new THREE.SphereGeometry(12.5, 16, 16),
+    inner: new THREE.SphereGeometry(6.5, 12, 12),
   },
   officer: {
-    outer: new THREE.IcosahedronGeometry(6.0, 0),
-    inner: new THREE.IcosahedronGeometry(3.2, 0),
+    outer: new THREE.IcosahedronGeometry(13.5, 0),
+    inner: new THREE.IcosahedronGeometry(7.2, 0),
+  },
+  organization: {
+    outer: new THREE.DodecahedronGeometry(16.0, 0),
+    inner: new THREE.DodecahedronGeometry(8.5, 0),
+  },
+  gang: {
+    outer: new THREE.DodecahedronGeometry(18.5, 0),
+    inner: new THREE.DodecahedronGeometry(10.0, 0),
+  },
+  vehicle: {
+    outer: new THREE.CylinderGeometry(13.5, 13.5, 16.0, 8),
+    inner: new THREE.CylinderGeometry(7.0, 7.0, 8.5, 8),
+  },
+  weapon: {
+    outer: new THREE.OctahedronGeometry(14.5, 0),
+    inner: new THREE.OctahedronGeometry(7.5, 0),
   },
   default: {
-    outer: new THREE.SphereGeometry(5.5, 16, 16),
-    inner: new THREE.SphereGeometry(3.0, 12, 12),
+    outer: new THREE.SphereGeometry(13.0, 16, 16),
+    inner: new THREE.SphereGeometry(7.0, 12, 12),
   },
 };
 
-const HALO_GEOMETRY = new THREE.TorusGeometry(9.0, 0.45, 12, 32);
-const HALO_MATERIAL = new THREE.MeshBasicMaterial({
-  color: 0xffffff,
+// Hero node dual halo orbit rings — matching enlarged node scale
+const HERO_HALO_GEOMETRY = new THREE.TorusGeometry(24.0, 0.90, 16, 48);
+const HERO_HALO_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0x38bdf8,
   transparent: true,
-  opacity: 0.9,
+  opacity: 0.95,
+  side: THREE.DoubleSide,
 });
 
-// Materials for subtle 3D glass / crystal effect with inner luminous core
+const HERO_OUTER_RING_GEOM = new THREE.TorusGeometry(32.0, 0.70, 16, 48);
+const HERO_OUTER_RING_MAT = new THREE.MeshBasicMaterial({
+  color: 0xf59e0b,
+  transparent: true,
+  opacity: 0.80,
+  side: THREE.DoubleSide,
+});
+
+const CATEGORY_COLORS: Record<string, number> = {
+  suspect: 0xef4444,
+  offender: 0xf97316,
+  cdr: 0x06b6d4,
+  financial_transaction: 0xf59e0b,
+  surveillance_report: 0xa855f7,
+  social_media_intel: 0x3b82f6,
+  case: 0x10b981,
+  location: 0x0ea5e9,
+  victim: 0x64748b,
+  officer: 0x14b8a6,
+  organization: 0x8b5cf6,
+  gang: 0xec4899,
+  vehicle: 0x38bdf8,
+  weapon: 0xf43f5e,
+  default: 0x8b5cf6,
+};
+
+// Materials cache to prevent re-allocating Three.js materials on every animation frame
+interface NodeMaterials {
+  outer: THREE.Material;
+  inner: THREE.Material;
+}
+
+const MATERIAL_CACHE = new Map<string, NodeMaterials>();
+
+// Materials for 3D glass / crystal effect with inner luminous core
 const createGlassMaterial = (color: number, opacity = 0.78) =>
   new THREE.MeshPhysicalMaterial({
     color,
@@ -89,66 +154,47 @@ const createCoreMaterial = (color: number, opacity = 0.95) =>
     opacity,
   });
 
-const MATERIALS: Record<string, { outer: THREE.Material; inner: THREE.Material }> = {
-  suspect: {
-    outer: createGlassMaterial(0xef4444),
-    inner: createCoreMaterial(0xff6b6b),
-  },
-  offender: {
-    outer: createGlassMaterial(0xf97316),
-    inner: createCoreMaterial(0xffa040),
-  },
-  cdr: {
-    outer: createGlassMaterial(0x06b6d4, 0.82),
-    inner: createCoreMaterial(0x22d3ee),
-  },
-  financial_transaction: {
-    outer: createGlassMaterial(0xf59e0b, 0.85),
-    inner: createCoreMaterial(0xfde68a),
-  },
-  surveillance_report: {
-    outer: createGlassMaterial(0xa855f7),
-    inner: createCoreMaterial(0xd8b4fe),
-  },
-  social_media_intel: {
-    outer: createGlassMaterial(0x3b82f6),
-    inner: createCoreMaterial(0x93c5fd),
-  },
-  case: {
-    outer: createGlassMaterial(0x10b981),
-    inner: createCoreMaterial(0x6ee7b7),
-  },
-  location: {
-    outer: createGlassMaterial(0x0ea5e9),
-    inner: createCoreMaterial(0x7dd3fc),
-  },
-  victim: {
-    outer: createGlassMaterial(0x64748b, 0.7),
-    inner: createCoreMaterial(0x94a3b8, 0.85),
-  },
-  officer: {
-    outer: createGlassMaterial(0x14b8a6),
-    inner: createCoreMaterial(0x5eead4),
-  },
-  default: {
-    outer: createGlassMaterial(0x8b5cf6),
-    inner: createCoreMaterial(0xc4b5fd),
-  },
-};
+function getNodeMaterials(
+  category: string,
+  state: 'normal' | 'hero' | 'one_hop' | 'two_hop' | 'dimmed',
+  isLight: boolean
+): NodeMaterials {
+  const cat = (category || 'default').toLowerCase();
+  const hex = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.default;
+  const key = `${cat}_${state}_${isLight ? 'light' : 'dark'}`;
 
-const SELECTED_MATERIALS = {
-  outer: createGlassMaterial(0xffffff, 0.9),
-  inner: createCoreMaterial(0xffffff, 1.0),
-};
+  const cached = MATERIAL_CACHE.get(key);
+  if (cached) return cached;
 
-const PATH_MATERIALS = {
+  let outer: THREE.Material;
+  let inner: THREE.Material;
+
+  if (state === 'hero') {
+    outer = createGlassMaterial(0xffffff, 0.98);
+    inner = createCoreMaterial(0xffffff, 1.0);
+  } else if (state === 'one_hop') {
+    outer = createGlassMaterial(hex, 0.95);
+    inner = createCoreMaterial(hex, 1.0);
+  } else if (state === 'two_hop') {
+    outer = createGlassMaterial(hex, 0.35);
+    inner = createCoreMaterial(hex, 0.40);
+  } else if (state === 'dimmed') {
+    outer = createGlassMaterial(0x334155, 0.08);
+    inner = createCoreMaterial(0x1e293b, 0.08);
+  } else {
+    // Normal state — luminous crystal glass with glowing inner core
+    outer = createGlassMaterial(hex, 0.85);
+    inner = createCoreMaterial(hex, 0.95);
+  }
+
+  const result: NodeMaterials = { outer, inner };
+  MATERIAL_CACHE.set(key, result);
+  return result;
+}
+
+const PATH_MATERIALS: NodeMaterials = {
   outer: createGlassMaterial(0x22d3ee, 0.95),
   inner: createCoreMaterial(0xa5f3fc, 1.0),
-};
-
-const DIMMED_MATERIALS = {
-  outer: createGlassMaterial(0x475569, 0.22),
-  inner: createCoreMaterial(0x334155, 0.25),
 };
 
 export interface GraphNode {
@@ -163,7 +209,7 @@ export interface GraphNode {
   status?: string | null;
   district?: string | null;
   date?: string | null;
-  /** True when the record originates from the bundled demo seed dataset (gap 132.4). */
+  /** True when the record originates from the bundled demo seed dataset. */
   isSeed?: boolean;
   /** Spatial coordinates assigned by the force-graph simulation at render time. */
   x?: number;
@@ -197,25 +243,50 @@ export interface GraphLink {
 
 const EMPTY_GRAPH_DATA: { nodes: GraphNode[]; links: GraphLink[] } = { nodes: [], links: [] };
 
-interface CriminalGraph3DProps {
+export interface CriminalGraph3DProps {
   onNodeSelect?: (node: GraphNode) => void;
   onLinkSelect?: (link: GraphLink) => void;
   graphData?: {
     nodes: GraphNode[];
     links: GraphLink[];
   };
-  /** Issue #230: node ids + undirected edge keys (`min~max`) to emphasize after a
-   *  connection-path search. All non-highlighted content is dimmed while active. */
+  /** Node ids + undirected edge keys (`min~max`) to emphasize after a connection-path search. */
   highlightPath?: {
     nodeIds: string[];
     linkKeys: string[];
   } | null;
+  /** Controlled selection from parent workspace */
+  selectedNodeId?: string | null;
+  /** Callback when user deselects or clicks empty background */
+  onClearSelection?: () => void;
+  /** Whether the Suspect <-> Offender Nexus filter is active */
+  suspectOffenderNexus?: boolean;
+  /** Callback to toggle Suspect <-> Offender Nexus */
+  onToggleSuspectOffenderNexus?: () => void;
 }
 
-export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, onLinkSelect, graphData, highlightPath }) => {
+export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({
+  onNodeSelect,
+  onLinkSelect,
+  graphData,
+  highlightPath,
+  selectedNodeId: externalSelectedNodeId,
+  onClearSelection,
+  suspectOffenderNexus,
+  onToggleSuspectOffenderNexus,
+}) => {
   const fgRef = useRef<any>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [internalSelectedNodeId, setInternalSelectedNodeId] = useState<string | null>(null);
+
+  // Synchronize selection between internal and parent prop
+  const activeSelectedNodeId =
+    externalSelectedNodeId !== undefined ? externalSelectedNodeId : internalSelectedNodeId;
+
+  // Local neighborhood isolation toggle
+  const [isolateLocalNetwork, setIsolateLocalNetwork] = useState<boolean>(false);
+
   const resolvedGraphData = useMemo(() => graphData ?? EMPTY_GRAPH_DATA, [graphData]);
+
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
   const [hasError, setHasError] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
@@ -224,17 +295,19 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   const canvasBg = isLight ? '#f7f9fc' : '#080E1B';
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const [dimensions, setDimensions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return {
+        width: Math.max(window.innerWidth * 0.70, 800),
+        height: Math.max(window.innerHeight * 0.75, 680),
+      };
+    }
+    return { width: 960, height: 680 };
+  });
 
-  // Issue #230: normalize the highlighted path so nodes/edges can be emphasized.
-  const pathNodeIds = useMemo(() => {
-    const set = new Set(highlightPath?.nodeIds ?? []);
-    return set;
-  }, [highlightPath]);
-  const pathLinkKeys = useMemo(() => {
-    const set = new Set(highlightPath?.linkKeys ?? []);
-    return set;
-  }, [highlightPath]);
+  // Path finder highlights
+  const pathNodeIds = useMemo(() => new Set(highlightPath?.nodeIds ?? []), [highlightPath]);
+  const pathLinkKeys = useMemo(() => new Set(highlightPath?.linkKeys ?? []), [highlightPath]);
   const hasHighlight = !!highlightPath && (pathNodeIds.size > 0 || pathLinkKeys.size > 0);
 
   const linkKey = (link: GraphLink): string => {
@@ -245,40 +318,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   const isPathLink = (link: GraphLink): boolean => pathLinkKeys.has(linkKey(link));
   const isPathNode = (node: GraphNode): boolean => pathNodeIds.has(node.id);
 
-  // Issue #230: nodes that keep a permanent on-canvas label — the selection plus
-  // every entity on the highlighted connection path.
-  const labeledNodes = useMemo(() => {
-    if (!selectedNodeId && !hasHighlight) return [];
-    return currentGraphData.nodes.filter((n) => n.id === selectedNodeId || (hasHighlight && isPathNode(n)));
-  }, [currentGraphData, selectedNodeId, hasHighlight, pathNodeIds]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        setDimensions({
-          width: width || 600,
-          height: height || 400
-        });
-      }
-    });
-    
-    resizeObserver.observe(containerRef.current);
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    setCurrentGraphData(resolvedGraphData);
-    // Reset auto-fit so new graph data triggers camera fit (Issue #189)
-    hasAutoFit.current = false;
-  }, [resolvedGraphData]);
-
-  // Compute degree centrality for node scaling
+  // Compute degree centrality for node scaling, repulsion and camera fitting
   const degreeMap = useMemo(() => {
     const deg: Record<string, number> = {};
     for (const link of currentGraphData.links) {
@@ -290,150 +330,459 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
     return deg;
   }, [currentGraphData]);
 
-  // Configure force simulation for better layout
+  // Investigation Focus Adjacency: 1-hop and 2-hop neighborhoods
+  const { oneHopNeighbors, twoHopNeighbors, directLinkKeys, secondaryLinkKeys } = useMemo(() => {
+    if (!activeSelectedNodeId) {
+      return {
+        oneHopNeighbors: new Set<string>(),
+        twoHopNeighbors: new Set<string>(),
+        directLinkKeys: new Set<string>(),
+        secondaryLinkKeys: new Set<string>(),
+      };
+    }
+
+    const oneHop = new Set<string>();
+    const directLinks = new Set<string>();
+
+    for (const link of currentGraphData.links) {
+      const s = typeof link.source === 'object' ? String(link.source.id) : String(link.source);
+      const t = typeof link.target === 'object' ? String(link.target.id) : String(link.target);
+      const key = [s, t].sort().join('~');
+
+      if (s === activeSelectedNodeId) {
+        oneHop.add(t);
+        directLinks.add(key);
+      } else if (t === activeSelectedNodeId) {
+        oneHop.add(s);
+        directLinks.add(key);
+      }
+    }
+
+    const twoHop = new Set<string>();
+    const secondaryLinks = new Set<string>();
+
+    for (const link of currentGraphData.links) {
+      const s = typeof link.source === 'object' ? String(link.source.id) : String(link.source);
+      const t = typeof link.target === 'object' ? String(link.target.id) : String(link.target);
+      const key = [s, t].sort().join('~');
+
+      if (directLinks.has(key)) continue;
+
+      const sInOne = oneHop.has(s);
+      const tInOne = oneHop.has(t);
+
+      if (sInOne && !oneHop.has(t) && t !== activeSelectedNodeId) {
+        twoHop.add(t);
+        secondaryLinks.add(key);
+      } else if (tInOne && !oneHop.has(s) && s !== activeSelectedNodeId) {
+        twoHop.add(s);
+        secondaryLinks.add(key);
+      } else if (sInOne && tInOne) {
+        secondaryLinks.add(key);
+      }
+    }
+
+    return {
+      oneHopNeighbors: oneHop,
+      twoHopNeighbors: twoHop,
+      directLinkKeys: directLinks,
+      secondaryLinkKeys: secondaryLinks,
+    };
+  }, [activeSelectedNodeId, currentGraphData]);
+
+  // Determine node hierarchical state
+  const getNodeState = useCallback(
+    (nodeId: string): 'hero' | 'one_hop' | 'two_hop' | 'dimmed' | 'normal' => {
+      if (!activeSelectedNodeId) return 'normal';
+      if (nodeId === activeSelectedNodeId) return 'hero';
+      if (oneHopNeighbors.has(nodeId)) return 'one_hop';
+      if (twoHopNeighbors.has(nodeId)) return 'two_hop';
+      return 'dimmed';
+    },
+    [activeSelectedNodeId, oneHopNeighbors, twoHopNeighbors]
+  );
+
+  // Determine link hierarchical state
+  const getLinkState = useCallback(
+    (link: GraphLink): 'direct' | 'secondary' | 'dimmed' | 'normal' => {
+      if (!activeSelectedNodeId) return 'normal';
+      const key = linkKey(link);
+      if (directLinkKeys.has(key)) return 'direct';
+      if (secondaryLinkKeys.has(key)) return 'secondary';
+      return 'dimmed';
+    },
+    [activeSelectedNodeId, directLinkKeys, secondaryLinkKeys]
+  );
+
+  // Effective graph data when Local Neighborhood mode is toggled ON
+  const effectiveGraphData = useMemo(() => {
+    if (!isolateLocalNetwork || !activeSelectedNodeId) {
+      return currentGraphData;
+    }
+    const allowedNodeIds = new Set<string>([
+      activeSelectedNodeId,
+      ...Array.from(oneHopNeighbors),
+      ...Array.from(twoHopNeighbors),
+    ]);
+    const filteredNodes = currentGraphData.nodes.filter((n) => allowedNodeIds.has(n.id));
+    const filteredLinks = currentGraphData.links.filter((l) => {
+      const sId = typeof l.source === 'object' ? l.source.id : String(l.source);
+      const tId = typeof l.target === 'object' ? l.target.id : String(l.target);
+      return allowedNodeIds.has(sId) && allowedNodeIds.has(tId);
+    });
+    return { nodes: filteredNodes, links: filteredLinks };
+  }, [isolateLocalNetwork, activeSelectedNodeId, currentGraphData, oneHopNeighbors, twoHopNeighbors]);
+
+  // Active labels layer: 1-hop connected neighbors (hero node is framed in 3D and in top status chip)
+  const labeledNodes = useMemo(() => {
+    if (hasHighlight) {
+      return currentGraphData.nodes.filter((n) => isPathNode(n));
+    }
+    if (activeSelectedNodeId) {
+      // Exclude selected hero node to prevent duplicate label & status bar collision
+      return currentGraphData.nodes.filter(
+        (n) => n.id !== activeSelectedNodeId && oneHopNeighbors.has(n.id)
+      );
+    }
+    return [];
+  }, [currentGraphData, activeSelectedNodeId, hasHighlight, isPathNode, oneHopNeighbors]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        const h = containerRef.current.clientHeight;
+        if (w > 0 && h > 0) {
+          setDimensions({ width: w, height: h });
+        }
+      }
+    };
+    updateSize();
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
+
+  useEffect(() => {
+    setCurrentGraphData(resolvedGraphData);
+    hasAutoFit.current = false;
+  }, [resolvedGraphData]);
+
+  // =========================================================================
+  // 3D FORCE SIMULATION TUNING (EXPANSIVE ORGANIC 3D NETWORK CLUSTER)
+  // =========================================================================
   useEffect(() => {
     if (fgRef.current && !hasError) {
       const engine = fgRef.current.d3Force;
       if (engine) {
-        // Set custom link distance based on relationship type
+        // 1. Link distance based on relationship type — enlarged spacing for big visual impact
         const linkForce = engine('link');
         if (linkForce) {
           linkForce.distance((link: any) => {
-            const type = link.relationship_type || link.relationship || '';
-            if (type.includes('USED') || type.includes('LINKED')) return 80;
-            if (type.includes('KNOWS') || type.includes('ASSOCIATED')) return 140;
-            return 110;
+            const type = (link.relationship_type || link.relationship || '').toUpperCase();
+            if (type.includes('USED') || type.includes('LINKED')) return 110;
+            if (type.includes('COMMUNICATION') || type.includes('CDR')) return 130;
+            if (type.includes('FINANCIAL')) return 150;
+            if (type.includes('2 FIR') || type.includes('3 FIR')) return 135;
+            if (type.includes('KNOWS') || type.includes('ASSOCIATED') || type.includes('GANG')) return 180;
+            return 140;
           });
+          linkForce.strength(0.35);
         }
-        // Increase charge repulsion to spread nodes apart
+
+        // 2. Stronger repulsion spreads nodes into a big, expansive 3D galaxy
         const chargeForce = engine('charge');
         if (chargeForce) {
-          chargeForce.strength(-280);
+          chargeForce.strength(suspectOffenderNexus ? -420 : -380);
+        }
+
+        // 3. Gentle center force keeps the cluster centered without collapsing
+        const centerForce = engine('center');
+        if (centerForce) {
+          centerForce.strength(0.04);
         }
       }
     }
-  }, [hasError, currentGraphData]);
+  }, [hasError, currentGraphData, suspectOffenderNexus]);
 
-  // Auto-fit camera on initial data load
+  // Initial camera framing: frame connected core network so the graph fills the screen
   const hasAutoFit = useRef(false);
   useEffect(() => {
     if (currentGraphData.nodes.length > 0 && !hasAutoFit.current && fgRef.current && !hasError) {
       hasAutoFit.current = true;
+      // Immediately place camera close so the graph is big and prominent
+      fgRef.current.cameraPosition({ x: 0, y: 0, z: 380 }, { x: 0, y: 0, z: 0 }, 0);
       setTimeout(() => {
-        fgRef.current?.zoomToFit(400, 30);
-      }, 2500);
+        if (fgRef.current && !activeSelectedNodeId) {
+          // Zoom to fit connected core nodes (degree >= 2), preventing isolated outliers from shrinking the view
+          fgRef.current.zoomToFit(700, 35, (node: any) => (degreeMap[node.id] || 0) >= 2);
+        }
+      }, 1400);
     }
-  }, [currentGraphData, hasError]);
+  }, [currentGraphData, hasError, activeSelectedNodeId, degreeMap]);
 
-  // Node Clicked Action — zoom camera close to the node
-  const handleNodeClick = (node: any) => {
-    if (fgRef.current && fgRef.current.cameraPosition) {
-      const distance = 45;
-      const norm = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1;
-      fgRef.current.cameraPosition(
-        {
-          x: (node.x || 0) + (node.x || 0) / norm * distance,
-          y: (node.y || 0) + (node.y || 0) / norm * distance + 15,
-          z: (node.z || 0) + (node.z || 0) / norm * distance + distance,
-        },
-        node,
-        1500
-      );
+  // Smoothly center and frame the neighborhood whenever activeSelectedNodeId changes
+  const prevSelectedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      activeSelectedNodeId &&
+      activeSelectedNodeId !== prevSelectedIdRef.current &&
+      fgRef.current &&
+      !hasError
+    ) {
+      prevSelectedIdRef.current = activeSelectedNodeId;
+      const neighborIds = new Set<string>([String(activeSelectedNodeId)]);
+      for (const link of currentGraphData.links) {
+        const s = typeof link.source === 'object' ? String(link.source.id) : String(link.source);
+        const t = typeof link.target === 'object' ? String(link.target.id) : String(link.target);
+        if (s === String(activeSelectedNodeId)) neighborIds.add(t);
+        if (t === String(activeSelectedNodeId)) neighborIds.add(s);
+      }
+      if (neighborIds.size > 1 && fgRef.current.zoomToFit) {
+        fgRef.current.zoomToFit(800, 60, (n: any) => neighborIds.has(String(n.id)));
+      } else {
+        const node = currentGraphData.nodes.find((n) => n.id === activeSelectedNodeId);
+        if (node && fgRef.current.cameraPosition) {
+          const target = { x: Number(node.x) || 0, y: Number(node.y) || 0, z: Number(node.z) || 0 };
+          fgRef.current.cameraPosition({ x: target.x, y: target.y + 24, z: target.z + 240 }, target, 800);
+        }
+      }
+    } else if (!activeSelectedNodeId) {
+      prevSelectedIdRef.current = null;
     }
-    const fullNode = currentGraphData.nodes.find(n => n.id === node.id);
+  }, [activeSelectedNodeId, currentGraphData, hasError]);
+
+  // Node Clicked Action — smoothly frames clicked node and all its direct connections
+  const handleNodeClick = (node: any) => {
+    setInternalSelectedNodeId(node.id);
+    const fullNode = currentGraphData.nodes.find((n) => n.id === node.id);
     if (fullNode) {
-      setSelectedNodeId(fullNode.id);
       onNodeSelect?.(fullNode);
+    }
+
+    // Collect all 1-hop connected neighbors
+    const neighborIds = new Set<string>([String(node.id)]);
+    for (const link of currentGraphData.links) {
+      const s = typeof link.source === 'object' ? String(link.source.id) : String(link.source);
+      const t = typeof link.target === 'object' ? String(link.target.id) : String(link.target);
+      if (s === String(node.id)) neighborIds.add(t);
+      if (t === String(node.id)) neighborIds.add(s);
+    }
+
+    if (fgRef.current) {
+      // Zoom to fit the entire connected neighborhood (clicked node + all direct ties) perfectly in view
+      if (neighborIds.size > 1 && fgRef.current.zoomToFit) {
+        fgRef.current.zoomToFit(800, 60, (n: any) => neighborIds.has(String(n.id)));
+      } else if (fgRef.current.cameraPosition) {
+        const target = {
+          x: Number(node.x) || 0,
+          y: Number(node.y) || 0,
+          z: Number(node.z) || 0,
+        };
+        fgRef.current.cameraPosition(
+          {
+            x: target.x,
+            y: target.y + 24,
+            z: target.z + 240,
+          },
+          target,
+          800
+        );
+      }
     }
   };
 
-  // Link Clicked Action (Issue #159)
+  // Background Clicked Action — deselects and returns to full view
+  const handleBackgroundClick = () => {
+    setInternalSelectedNodeId(null);
+    setIsolateLocalNetwork(false);
+    onClearSelection?.();
+  };
+
+  // Link Clicked Action
   const handleLinkClick = (link: any) => {
     if (onLinkSelect) {
       onLinkSelect(link);
     }
   };
 
-  // Issue #189: Center camera on the currently selected node
+  // Center camera on the currently selected node and its neighborhood
   const handleCenterSelected = useCallback(() => {
-    if (!selectedNodeId || !fgRef.current || hasError) return;
-    const node = currentGraphData.nodes.find(n => n.id === selectedNodeId);
-    if (!node) return;
-    const distance = 45;
-    const norm = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1;
-    if (fgRef.current.cameraPosition) {
-      fgRef.current.cameraPosition(
-        {
-          x: (node.x || 0) + (node.x || 0) / norm * distance,
-          y: (node.y || 0) + (node.y || 0) / norm * distance + 15,
-          z: (node.z || 0) + (node.z || 0) / norm * distance + distance,
-        },
-        node,
-        800
-      );
+    if (!activeSelectedNodeId || !fgRef.current || hasError) return;
+    const neighborIds = new Set<string>([String(activeSelectedNodeId)]);
+    for (const link of currentGraphData.links) {
+      const s = typeof link.source === 'object' ? String(link.source.id) : String(link.source);
+      const t = typeof link.target === 'object' ? String(link.target.id) : String(link.target);
+      if (s === String(activeSelectedNodeId)) neighborIds.add(t);
+      if (t === String(activeSelectedNodeId)) neighborIds.add(s);
     }
-  }, [selectedNodeId, currentGraphData, hasError]);
+    if (neighborIds.size > 1 && fgRef.current.zoomToFit) {
+      fgRef.current.zoomToFit(700, 60, (n: any) => neighborIds.has(String(n.id)));
+    } else {
+      const node = currentGraphData.nodes.find((n) => n.id === activeSelectedNodeId);
+      if (node && fgRef.current.cameraPosition) {
+        const target = { x: Number(node.x) || 0, y: Number(node.y) || 0, z: Number(node.z) || 0 };
+        fgRef.current.cameraPosition({ x: target.x, y: target.y + 24, z: target.z + 240 }, target, 700);
+      }
+    }
+  }, [activeSelectedNodeId, currentGraphData, hasError]);
+
+  // Fit all connected nodes smoothly within viewport
+  const handleFitView = useCallback(() => {
+    if (fgRef.current && !hasError) {
+      fgRef.current.zoomToFit(600, 30, (node: any) => (degreeMap[node.id] || 0) >= 2);
+    }
+  }, [hasError, degreeMap]);
+
+  // Reset view and deselect
+  const handleResetView = useCallback(() => {
+    setInternalSelectedNodeId(null);
+    setIsolateLocalNetwork(false);
+    onClearSelection?.();
+    if (fgRef.current && !hasError) {
+      fgRef.current.cameraPosition({ x: 0, y: 0, z: 380 }, { x: 0, y: 0, z: 0 }, 700);
+      setTimeout(() => {
+        fgRef.current?.zoomToFit(600, 30, (node: any) => (degreeMap[node.id] || 0) >= 2);
+      }, 750);
+    }
+  }, [onClearSelection, hasError, degreeMap]);
 
   // Color matching for nodes
   const getNodeColor = (cat: string) => {
-    switch (cat) {
-      case 'suspect': return '#EF4444'; // Red
-      case 'offender': return '#F97316'; // Orange
-      case 'cdr': return '#06B6D4'; // Cyan
-      case 'financial_transaction': return '#F59E0B'; // Amber / Gold
-      case 'surveillance_report': return '#A855F7'; // Purple
-      case 'social_media_intel': return '#3B82F6'; // Blue
-      case 'location': return '#0EA5E9'; // Sky
-      case 'case': return '#10B981'; // Green
-      case 'victim': return '#64748B'; // Grey
-      case 'officer': return '#14C997'; // Teal
+    switch ((cat || '').toLowerCase()) {
+      case 'suspect': return '#EF4444';
+      case 'offender': return '#F97316';
+      case 'cdr': return '#06B6D4';
+      case 'financial_transaction': return '#F59E0B';
+      case 'surveillance_report': return '#A855F7';
+      case 'social_media_intel': return '#3B82F6';
+      case 'location': return '#0EA5E9';
+      case 'case': return '#10B981';
+      case 'victim': return '#64748B';
+      case 'officer': return '#14C997';
+      case 'organization': return '#8B5CF6';
+      case 'gang': return '#EC4899';
+      case 'vehicle': return '#38BDF8';
+      case 'weapon': return '#F43F5E';
       default: return '#8B5CF6';
     }
   };
 
-  // Color matching for link provenance & intelligence sources
+  // Color matching for criminal ties, syndicate relationships & intelligence sources
   const getLinkColor = (link: GraphLink) => {
-    const relType = (link.relationship_type || link.relationship || '').toUpperCase();
-    if (relType === 'COMMUNICATION' || relType.includes('CDR') || relType.includes('CALL')) {
-      return isLight ? 'rgba(8, 145, 178, 0.85)' : 'rgba(6, 182, 212, 0.85)';
+    const rel = (link.relationship || '').toUpperCase();
+    const relType = (link.relationship_type || '').toUpperCase();
+
+    // 1. High-Threat Multi-FIR Repeat Co-accused (Crimson & Vivid Rose)
+    if (rel.includes('3 FIR') || rel.includes('CO-ACCUSED IN 3')) {
+      return '#EF4444'; // Bright Crimson Red
     }
-    if (relType === 'FINANCIAL' || relType.includes('TRANSACTION') || relType.includes('TXN')) {
-      return isLight ? 'rgba(217, 119, 6, 0.85)' : 'rgba(245, 158, 11, 0.85)';
+    if (rel.includes('2 FIR') || rel.includes('CO-ACCUSED IN 2')) {
+      return '#F43F5E'; // Vivid Rose / Neon Coral
     }
-    if (relType === 'SURVEILLANCE' || relType.includes('SURVEILLANCE') || relType.includes('CCTV')) {
-      return isLight ? 'rgba(147, 51, 234, 0.85)' : 'rgba(168, 85, 247, 0.85)';
+
+    // 2. Specific Gang Syndicates (Rich distinct colors matching the 3D aesthetic)
+    if (rel.includes('EXTORTION') || rel.includes('DIGITAL EXTORTION')) {
+      return '#EC4899'; // Vibrant Pink / Magenta
     }
-    if (relType === 'SOCIAL_DIGITAL' || relType.includes('SOCIAL') || relType.includes('TELEGRAM') || relType.includes('CYBER')) {
-      return isLight ? 'rgba(37, 99, 235, 0.85)' : 'rgba(59, 130, 246, 0.85)';
+    if (rel.includes('NARCOTICS') || rel.includes('DRUG') || rel.includes('KONKAN')) {
+      return '#10B981'; // Vivid Emerald Green
     }
+    if (rel.includes('SNATCHER') || rel.includes('WHITEFIELD') || rel.includes('ROBBERY')) {
+      return '#F97316'; // Vivid Amber-Orange
+    }
+    if (rel.includes('LAND') || rel.includes('DECCAN') || rel.includes('MAFIA')) {
+      return '#A855F7'; // Electric Purple
+    }
+    if (relType === 'GANG_ASSOCIATE' || rel.includes('SYNDICATE') || rel.includes('GANG')) {
+      return '#8B5CF6'; // Bright Violet
+    }
+
+    // 3. Single FIR Co-accused (Electric Cyan)
+    if (rel.includes('CO-ACCUSED') || relType === 'SHARED_CASE') {
+      return isLight ? 'rgba(8, 145, 178, 0.9)' : '#06B6D4'; // Electric Cyan
+    }
+
+    // 4. Intelligence Modality Links
+    if (relType === 'COMMUNICATION' || rel.includes('CDR') || rel.includes('CALL')) {
+      return isLight ? 'rgba(8, 145, 178, 0.85)' : '#00F0FF'; // Neon Cyan
+    }
+    if (relType === 'FINANCIAL' || rel.includes('TRANSACTION') || rel.includes('TXN')) {
+      return isLight ? 'rgba(217, 119, 6, 0.85)' : '#FFB703'; // Bright Amber Gold
+    }
+    if (relType === 'SURVEILLANCE' || rel.includes('SURVEILLANCE') || rel.includes('CCTV')) {
+      return isLight ? 'rgba(147, 51, 234, 0.85)' : '#C084FC'; // Luminous Purple
+    }
+    if (relType === 'SOCIAL_DIGITAL' || rel.includes('SOCIAL') || rel.includes('CYBER')) {
+      return isLight ? 'rgba(37, 99, 235, 0.85)' : '#60A5FA'; // Bright Sky Blue
+    }
+
+    // 5. Verification Status Fallbacks
     if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
       return isLight ? 'rgba(5, 150, 105, 0.85)' : 'rgba(16, 185, 129, 0.85)';
     }
     if (link.verification_status === 'POTENTIAL' || link.provenance === 'ANALYTICAL_INFERENCE') {
-      return isLight ? 'rgba(217, 119, 6, 0.95)' : 'rgba(245, 158, 11, 0.95)';
+      return isLight ? 'rgba(217, 119, 6, 0.85)' : 'rgba(245, 158, 11, 0.85)';
     }
     if (link.is_demo_derived || link.provenance === 'DEMO_SEED' || link.provenance === 'MIXED') {
       return isLight ? 'rgba(124, 58, 237, 0.75)' : 'rgba(168, 85, 247, 0.75)';
     }
-    return isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.55)';
+    return isLight ? 'rgba(100, 116, 139, 0.55)' : 'rgba(148, 163, 184, 0.50)';
   };
 
-  // Node 3D Glass Object with inner glow highlight and custom geometry
+  const getDirectLinkColor = (link: GraphLink): string => {
+    const rel = (link.relationship || '').toUpperCase();
+    const relType = (link.relationship_type || '').toUpperCase();
+    if (rel.includes('3 FIR') || rel.includes('CO-ACCUSED IN 3')) return '#EF4444';
+    if (rel.includes('2 FIR') || rel.includes('CO-ACCUSED IN 2')) return '#F43F5E';
+    if (rel.includes('EXTORTION')) return '#EC4899';
+    if (rel.includes('NARCOTICS') || rel.includes('KONKAN')) return '#10B981';
+    if (rel.includes('SNATCHER') || rel.includes('WHITEFIELD')) return '#F97316';
+    if (rel.includes('DECCAN') || rel.includes('LAND')) return '#A855F7';
+    if (relType === 'COMMUNICATION' || rel.includes('CDR') || rel.includes('CALL')) {
+      return '#00F0FF'; // Electric Cyan
+    }
+    if (relType === 'FINANCIAL' || rel.includes('TRANSACTION')) {
+      return '#FFB703'; // Bright Amber Gold
+    }
+    if (relType === 'SURVEILLANCE' || rel.includes('CCTV')) {
+      return '#C084FC'; // Electric Purple
+    }
+    if (relType === 'SOCIAL_DIGITAL' || rel.includes('SOCIAL')) {
+      return '#60A5FA'; // Bright Sky Blue
+    }
+    return '#38BDF8';
+  };
+
+  // Node 3D Glass Object with Investigation Focus Mode Visual Hierarchy
   const nodeThreeObject = useCallback(
     (node: any) => {
       const cat = (node.category || 'default').toLowerCase();
       const geom = GEOMETRIES[cat] || GEOMETRIES.default;
-      const isSelected = node.id === selectedNodeId;
       const isPath = hasHighlight && isPathNode(node);
-      const isDimmed = hasHighlight && !isPath;
 
-      const mat = isSelected
-        ? SELECTED_MATERIALS
-        : isPath
+      let state: 'hero' | 'one_hop' | 'two_hop' | 'dimmed' | 'normal' = 'normal';
+      if (hasHighlight) {
+        state = isPath ? 'hero' : 'dimmed';
+      } else if (activeSelectedNodeId) {
+        state = getNodeState(node.id);
+      }
+
+      const mat = isPath
         ? PATH_MATERIALS
-        : isDimmed
-        ? DIMMED_MATERIALS
-        : MATERIALS[cat] || MATERIALS.default;
+        : getNodeMaterials(cat, state, isLight);
 
       const group = new THREE.Group();
 
@@ -459,372 +808,735 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       group.add(outerMesh);
       group.add(innerMesh);
 
-      if (isSelected) {
-        const ringMesh = new THREE.Mesh(HALO_GEOMETRY, HALO_MATERIAL);
+      // Luminous dual orbital rings on Hero / Selected node
+      if (state === 'hero') {
+        const ringMesh = new THREE.Mesh(HERO_HALO_GEOMETRY, HERO_HALO_MATERIAL);
         ringMesh.rotation.x = Math.PI / 2;
         group.add(ringMesh);
+
+        const outerRing = new THREE.Mesh(HERO_OUTER_RING_GEOM, HERO_OUTER_RING_MAT);
+        outerRing.rotation.x = Math.PI / 3;
+        outerRing.rotation.y = Math.PI / 6;
+        group.add(outerRing);
       }
 
       // Hierarchy and degree centrality scaling
       const deg = degreeMap[node.id] || 0;
-      const isPerson = cat === 'suspect' || cat === 'offender';
+      const isPerson = cat === 'suspect' || cat === 'offender' || cat === 'gang';
+
+      let scaleMultiplier = 1.0;
+      if (state === 'hero') {
+        scaleMultiplier = 1.55;
+      } else if (state === 'one_hop') {
+        scaleMultiplier = 1.30;
+      } else if (state === 'two_hop') {
+        scaleMultiplier = 0.80;
+      } else if (state === 'dimmed') {
+        scaleMultiplier = 0.35;
+      }
+
       const baseScale = isPerson
-        ? 1.0 + Math.min(deg * 0.08, 0.55)
-        : 0.85 + Math.min(deg * 0.05, 0.35);
-      const finalScale = isSelected ? baseScale * 1.3 : baseScale;
+        ? 1.05 + Math.min(deg * 0.04, 0.45)
+        : 0.95 + Math.min(deg * 0.03, 0.30);
+
+      const finalScale = baseScale * scaleMultiplier;
       group.scale.set(finalScale, finalScale, finalScale);
 
       return group;
     },
-    [selectedNodeId, hasHighlight, isPathNode, degreeMap]
+    [activeSelectedNodeId, hasHighlight, isPathNode, getNodeState, degreeMap, isLight]
   );
 
-  // Slow orbital rotation when idle
+  // Slow orbital rotation when idle (stops while interacting or focusing)
   useEffect(() => {
     if (fgRef.current && !hasError) {
-      fgRef.current.controls().autoRotate = true;
-      fgRef.current.controls().autoRotateSpeed = 0.65;
+      const controls = fgRef.current.controls();
+      if (controls) {
+        controls.autoRotate = !activeSelectedNodeId;
+        controls.autoRotateSpeed = 0.50;
+      }
     }
-  }, [hasError]);
+  }, [hasError, activeSelectedNodeId]);
+
+  const activeSelectedNode = useMemo(() => {
+    if (!activeSelectedNodeId) return null;
+    return currentGraphData.nodes.find((n) => n.id === activeSelectedNodeId) ?? null;
+  }, [activeSelectedNodeId, currentGraphData]);
 
   return (
-    <div className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden" style={{ minHeight: '500px' }}>
-      
-      {/* STATUS OVERLAY */}
-      <div className="absolute top-4 left-4 z-20 pointer-events-auto">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-tertiary)]/90 backdrop-blur-sm border border-[var(--border-color)] rounded-btn text-[9px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-          <span>{currentGraphData.nodes.length} NODES</span>
+    <div
+      className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden select-none"
+      style={{ minHeight: '740px' }}
+    >
+      {/* TOP STATUS OVERLAY */}
+      <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-tertiary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-btn text-[9px] font-mono uppercase tracking-wider text-[var(--text-muted)] shadow-lg">
+          <span>{effectiveGraphData.nodes.length} NODES</span>
           <span className="text-[var(--border-color)]">/</span>
-          <span>{currentGraphData.links.length} EDGES</span>
-          <span className="ml-2 text-[var(--text-disabled)]">CLICK NODE &rarr; DOSSIER &bull; EDGE &rarr; LINK</span>
+          <span>{effectiveGraphData.links.length} EDGES</span>
+          <span className="ml-2 text-[var(--text-disabled)] hidden sm:inline">&bull; CLICK NODE &rarr; DOSSIER</span>
+
+          {suspectOffenderNexus && (
+            <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold tracking-wider">
+              <Zap className="w-3 h-3 text-amber-400 animate-pulse" />
+              SUSPECT &harr; OFFENDER NEXUS
+              {onToggleSuspectOffenderNexus && (
+                <button
+                  onClick={onToggleSuspectOffenderNexus}
+                  className="hover:text-red-400 p-0.5 ml-0.5 cursor-pointer transition-colors"
+                  title="Exit Suspect-Offender Nexus Mode"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              )}
+            </span>
+          )}
+
           {hasHighlight && (
             <span className="ml-2 inline-flex items-center gap-1 text-cyan-300">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
-              CONNECTION PATH
+              PATH HIGHLIGHT
+            </span>
+          )}
+
+          {activeSelectedNode && (
+            <span className="ml-2 inline-flex items-center gap-1.5 text-sky-300 border-l border-[var(--border-color)] pl-2">
+              <Sparkles className="w-3 h-3 text-sky-400 animate-pulse" />
+              TARGET: <b className="text-white truncate max-w-[130px]">{activeSelectedNode.name}</b>
+              <span className="text-[8px] text-sky-400 font-bold">({oneHopNeighbors.size} CONNECTIONS)</span>
+              <button
+                onClick={handleResetView}
+                className="hover:text-red-400 p-0.5 ml-1 cursor-pointer transition-colors"
+                title="Exit Focus Mode"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           )}
         </div>
       </div>
 
       {/* GRAPH VIEWPORT */}
-      <div ref={containerRef} className="flex-1 w-full h-full relative" style={{ minHeight: '460px' }}>
+      <div ref={containerRef} className="flex-1 w-full h-full relative" style={{ minHeight: '720px' }}>
         {hasError ? (
-          <GraphFallback onNodeSelect={onNodeSelect} onLinkSelect={onLinkSelect} isLight={isLight} graphData={currentGraphData} />
+          <GraphFallback
+            onNodeSelect={onNodeSelect}
+            onLinkSelect={onLinkSelect}
+            isLight={isLight}
+            graphData={currentGraphData}
+          />
         ) : (
-          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} onLinkSelect={onLinkSelect} isLight={isLight} graphData={currentGraphData} />} onError={() => setHasError(true)}>
+          <ErrorBoundary
+            fallback={
+              <GraphFallback
+                onNodeSelect={onNodeSelect}
+                onLinkSelect={onLinkSelect}
+                isLight={isLight}
+                graphData={currentGraphData}
+              />
+            }
+            onError={() => setHasError(true)}
+          >
             <ForceGraph3D
               ref={fgRef}
-              graphData={currentGraphData}
+              graphData={effectiveGraphData}
               width={dimensions.width}
               height={dimensions.height}
               backgroundColor={canvasBg}
               showNavInfo={false}
               nodeThreeObject={nodeThreeObject}
-              nodeLabel={(node) => {
+              nodeLabel={(node: any) => {
                 const cat = (node.category || 'entity').toLowerCase();
                 const color = getNodeColor(node.category);
-                const badgeStyle = `display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:bold;letter-spacing:0.05em;text-transform:uppercase;background:${color}22;color:${color};border:1px solid ${color}55;`;
+                const deg = degreeMap[node.id] || 0;
+                const isSelected = node.id === activeSelectedNodeId;
+                const is1Hop = oneHopNeighbors.has(node.id);
 
-                let detailsHtml = '';
+                const badgeStyle = `display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:${color}22;color:${color};border:1px solid ${color}66;`;
+
+                let relationTag = '';
+                if (isSelected) {
+                  relationTag = `<span style="background:rgba(56,189,248,0.25);color:#38bdf8;border:1px solid #38bdf8;font-size:8.5px;padding:1px 5px;border-radius:3px;font-weight:bold;letter-spacing:0.05em;">TARGET HERO</span>`;
+                } else if (is1Hop) {
+                  relationTag = `<span style="background:rgba(16,185,129,0.25);color:#34d399;border:1px solid #10b981;font-size:8.5px;padding:1px 5px;border-radius:3px;font-weight:bold;letter-spacing:0.05em;">DIRECT LINK</span>`;
+                }
+
+                const risk = node.riskScore ?? 0;
+                const riskColor = risk >= 75 ? '#ef4444' : risk >= 50 ? '#f59e0b' : '#10b981';
+
+                let specificDetails = '';
                 if (cat === 'cdr') {
-                  detailsHtml = `
-                    <span style="color:#67e8f9">Phone: ${node.phone || node.name.replace(/^CDR:\s*/, '')}</span><br />
-                    <span style="color:#94a3b8">Type: Call Detail Record &bull; Active Telemetry</span>
-                    ${node.date ? `<br /><span style="color:#94a3b8">Logged: ${new Date(node.date).toLocaleString()}</span>` : ''}
+                  specificDetails = `
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;margin-top:2px;">
+                      <span>TELEMETRY:</span>
+                      <span style="color:#67e8f9;font-weight:600;">${node.phone || node.name.replace(/^CDR:\s*/, '')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;">
+                      <span>CALL TYPE:</span>
+                      <span style="color:#e2e8f0;">Active Cellular CDR</span>
+                    </div>
+                    ${node.date ? `<div style="display:flex;justify-content:space-between;color:#94a3b8;"><span>LOGGED:</span><span style="color:#cbd5e1;">${new Date(node.date).toLocaleString()}</span></div>` : ''}
                   `;
                 } else if (cat === 'financial_transaction') {
-                  detailsHtml = `
-                    <span style="color:#fde68a">Evidence/Ledger: ${node.name}</span><br />
-                    <span style="color:#94a3b8">Status: ${node.status || 'Verified Ledger'} &bull; Risk: ${node.riskScore ?? 0}%</span>
-                    ${node.date ? `<br /><span style="color:#94a3b8">Timestamp: ${node.date}</span>` : ''}
+                  specificDetails = `
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;margin-top:2px;">
+                      <span>LEDGER:</span>
+                      <span style="color:#fde68a;font-weight:600;">${node.name}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;">
+                      <span>STATUS:</span>
+                      <span style="color:#e2e8f0;">${node.status || 'Verified Ledger'}</span>
+                    </div>
+                    ${node.date ? `<div style="display:flex;justify-content:space-between;color:#94a3b8;"><span>TIMESTAMP:</span><span style="color:#cbd5e1;">${node.date}</span></div>` : ''}
                   `;
                 } else if (cat === 'surveillance_report') {
-                  detailsHtml = `
-                    <span style="color:#d8b4fe">Surveillance: ${node.name}</span><br />
-                    <span style="color:#94a3b8">Priority: ${node.status || 'Active Intel'} &bull; District: ${node.district || 'Unassigned'}</span>
-                    ${node.date ? `<br /><span style="color:#94a3b8">Reported: ${new Date(node.date).toLocaleString()}</span>` : ''}
+                  specificDetails = `
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;margin-top:2px;">
+                      <span>SURVEILLANCE:</span>
+                      <span style="color:#d8b4fe;font-weight:600;">${node.name}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;">
+                      <span>DISTRICT:</span>
+                      <span style="color:#e2e8f0;">${node.district || 'Unassigned'}</span>
+                    </div>
+                    ${node.date ? `<div style="display:flex;justify-content:space-between;color:#94a3b8;"><span>LOGGED:</span><span style="color:#cbd5e1;">${new Date(node.date).toLocaleString()}</span></div>` : ''}
                   `;
                 } else if (cat === 'social_media_intel') {
-                  detailsHtml = `
-                    <span style="color:#93c5fd">Digital Threat: ${node.name}</span><br />
-                    <span style="color:#94a3b8">Channel: Cyber Intelligence &bull; Risk: ${node.riskScore ?? 0}%</span>
-                    ${node.district ? `<br /><span style="color:#94a3b8">District: ${node.district}</span>` : ''}
-                  `;
-                } else if (cat === 'offender') {
-                  detailsHtml = `
-                    <span style="color:#fdba74">Status: ${node.status || 'Convicted / Known'} &bull; Risk: ${node.riskScore ?? 0}%</span><br />
-                    <span style="color:#94a3b8">Affiliation: ${node.gangAffiliation || 'Independent'} &bull; Cases: ${node.casesCount ?? 0}</span>
+                  specificDetails = `
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;margin-top:2px;">
+                      <span>CHANNEL:</span>
+                      <span style="color:#93c5fd;font-weight:600;">Cyber / OSINT</span>
+                    </div>
+                    ${node.district ? `<div style="display:flex;justify-content:space-between;color:#94a3b8;"><span>DISTRICT:</span><span style="color:#e2e8f0;">${node.district}</span></div>` : ''}
                   `;
                 } else {
-                  detailsHtml = `
-                    <span style="color:#fca5a5">Risk: ${node.riskScore ?? 0}% &bull; Cases: ${node.casesCount ?? 0}</span>
-                    ${node.district ? `<br /><span style="color:#94a3b8">District: ${node.district}</span>` : ''}
-                    ${node.gangAffiliation ? `<br /><span style="color:#94a3b8">Gang: ${node.gangAffiliation}</span>` : ''}
+                  specificDetails = `
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;margin-top:2px;">
+                      <span>AFFILIATION:</span>
+                      <span style="color:#e2e8f0;">${node.gangAffiliation || 'Independent'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;">
+                      <span>CASES RECORDED:</span>
+                      <span style="color:#e2e8f0;">${node.casesCount ?? 0}</span>
+                    </div>
+                    ${node.district ? `<div style="display:flex;justify-content:space-between;color:#94a3b8;"><span>DISTRICT:</span><span style="color:#e2e8f0;">${node.district}</span></div>` : ''}
                   `;
                 }
 
                 return `
                   <div style="
                     background: rgba(11, 17, 32, 0.94);
-                    border: 1px solid rgba(255, 255, 255, 0.15);
-                    border-radius: 8px;
-                    padding: 8px 12px;
+                    border: 1px solid ${isSelected ? 'rgba(56,189,248,0.7)' : 'rgba(255, 255, 255, 0.18)'};
+                    border-radius: 9px;
+                    padding: 9px 13px;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
                     font-size: 11px;
-                    line-height: 1.45;
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px ${color}33;
-                    backdrop-filter: blur(8px);
-                    max-width: 280px;
+                    line-height: 1.4;
+                    box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.75), 0 0 18px ${color}40;
+                    backdrop-filter: blur(12px);
+                    min-width: 240px;
+                    max-width: 320px;
                     pointer-events: none;
                   ">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
-                      <b style="color:#f1f5f9;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${node.name}</b>
-                      <span style="${badgeStyle}">${cat.replace(/_/g, ' ')}</span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:5px;">
+                      <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <b style="color:#f8fafc;font-size:12.5px;">${node.name}</b>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:4px;">
+                        ${relationTag}
+                        <span style="${badgeStyle}">${cat.replace(/_/g, ' ')}</span>
+                      </div>
                     </div>
-                    ${detailsHtml}
+
+                    <!-- Risk Score Bar -->
+                    <div style="margin-bottom:6px;">
+                      <div style="display:flex;justify-content:space-between;font-size:9.5px;margin-bottom:2px;">
+                        <span style="color:#94a3b8;">THREAT RISK SCORE:</span>
+                        <span style="color:${riskColor};font-weight:700;">${risk}%</span>
+                      </div>
+                      <div style="width:100%;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;">
+                        <div style="width:${Math.min(risk, 100)}%;height:100%;background:${riskColor};box-shadow:0 0 6px ${riskColor};"></div>
+                      </div>
+                    </div>
+
+                    <!-- Degree / Direct Connections -->
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:10px;margin-bottom:4px;">
+                      <span>DIRECT CONNECTIONS:</span>
+                      <span style="color:#38bdf8;font-weight:700;">${deg} node${deg === 1 ? '' : 's'}</span>
+                    </div>
+
+                    <!-- Specific entity intelligence -->
+                    <div style="font-size:9.5px;border-top:1px dashed rgba(255,255,255,0.1);padding-top:4px;">
+                      ${specificDetails}
+                    </div>
                   </div>
                 `;
               }}
-              linkLabel={(link) => {
+              linkLabel={(link: any) => {
                 const l = link as GraphLink;
                 const provenance = l.provenance || 'DIRECT_DATABASE';
                 const status = l.verification_status || 'VERIFIED';
-                return `<div style="font-family:monospace;font-size:10px;line-height:1.4;pointer-events:none">
-                  <b style="color:#e8edf5">${l.relationship || 'RELATIONSHIP'}</b><br />
-                  <span style="color:${getLinkColor(l)}">${provenance.replace(/_/g, ' ')} &bull; ${status.replace(/_/g, ' ')}</span>
-                  ${l.weight !== undefined && l.weight !== null ? `<br /><span style="color:#94a3b8">strength ${l.weight}</span>` : ''}
-                </div>`;
+                const relColor = getLinkColor(l);
+                const isDirect = activeSelectedNodeId ? getLinkState(l) === 'direct' : false;
+
+                return `
+                  <div style="
+                    background: rgba(11, 17, 32, 0.94);
+                    border: 1px solid ${isDirect ? 'rgba(56,189,248,0.7)' : 'rgba(255, 255, 255, 0.15)'};
+                    border-radius: 8px;
+                    padding: 7px 11px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 10px;
+                    line-height: 1.4;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 12px ${relColor}33;
+                    backdrop-filter: blur(10px);
+                    pointer-events: none;
+                    min-width: 180px;
+                  ">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px;">
+                      <b style="color:#f8fafc;font-size:11px;">${(l.relationship || 'RELATIONSHIP').toUpperCase()}</b>
+                      ${isDirect ? '<span style="background:rgba(56,189,248,0.2);color:#38bdf8;border:1px solid #38bdf8;font-size:8px;padding:1px 4px;border-radius:3px;">DIRECT EDGE</span>' : ''}
+                    </div>
+                    <div style="color:${relColor};font-weight:600;font-size:9px;">
+                      ${provenance.replace(/_/g, ' ')} &bull; ${status.replace(/_/g, ' ')}
+                    </div>
+                    ${l.weight !== undefined && l.weight !== null ? `<div style="color:#94a3b8;font-size:9px;margin-top:2px;">Signal Strength: <b style="color:#cbd5e1;">${l.weight}</b></div>` : ''}
+                  </div>
+                `;
               }}
-              linkColor={link => {
+              // Curved edges prevent overlapping lines without creating polygon wedges
+              linkCurvature={0.16}
+              linkColor={(link: any) => {
                 const l = link as GraphLink;
                 if (hasHighlight) {
                   if (isPathLink(l)) return '#22D3EE';
-                  return isLight ? 'rgba(100, 116, 139, 0.10)' : 'rgba(148, 163, 184, 0.10)';
+                  return isLight ? 'rgba(100, 116, 139, 0.05)' : 'rgba(148, 163, 184, 0.05)';
+                }
+                if (activeSelectedNodeId) {
+                  const state = getLinkState(l);
+                  if (state === 'direct') {
+                    return getDirectLinkColor(l);
+                  } else if (state === 'secondary') {
+                    return isLight ? 'rgba(56, 189, 248, 0.20)' : 'rgba(56, 189, 248, 0.20)';
+                  } else {
+                    return isLight ? 'rgba(100, 116, 139, 0.02)' : 'rgba(148, 163, 184, 0.02)';
+                  }
                 }
                 return getLinkColor(l);
               }}
-              linkDirectionalParticles={link => {
+              linkWidth={(link: any) => {
                 const l = link as GraphLink;
                 if (hasHighlight) {
-                  if (isPathLink(l)) return 4;
+                  return isPathLink(l) ? 4.5 : 0.4;
+                }
+                if (activeSelectedNodeId) {
+                  const state = getLinkState(l);
+                  if (state === 'direct') return 4.8;
+                  if (state === 'secondary') return 1.2;
+                  return 0.08;
+                }
+                if (suspectOffenderNexus) {
+                  const rel = (l.relationship || '').toUpperCase();
+                  if (rel.includes('2 FIR') || rel.includes('3 FIR') || rel.includes('SYNDICATE')) {
+                    return 3.4;
+                  }
+                  return 2.4;
+                }
+                return l.verification_status === 'VERIFIED' ? 2.2 : 1.4;
+              }}
+              linkDirectionalParticles={(link: any) => {
+                const l = link as GraphLink;
+                if (hasHighlight) {
+                  return isPathLink(l) ? 5 : 0;
+                }
+                if (activeSelectedNodeId) {
+                  const state = getLinkState(l);
+                  if (state === 'direct') return 5;
                   return 0;
                 }
-                return l.verification_status === 'POTENTIAL' ? 3 : 1.5;
-              }}
-              linkDirectionalParticleSpeed={0.018}
-              linkDirectionalParticleWidth={2.5}
-              linkWidth={link => {
-                const l = link as GraphLink;
-                if (hasHighlight) {
-                  if (isPathLink(l)) return 5;
-                  return 1.2;
+                if (suspectOffenderNexus) {
+                  return 2;
                 }
-                return l.verification_status === 'VERIFIED' ? 3.5 : 2.5;
+                return l.verification_status === 'POTENTIAL' ? 2 : 1;
               }}
-              d3AlphaDecay={0.015}
-              d3VelocityDecay={0.35}
-              d3AlphaMin={0.0005}
-              cooldownTime={12000}
+              linkDirectionalParticleSpeed={(link: any) => {
+                if (activeSelectedNodeId && getLinkState(link as GraphLink) === 'direct') return 0.012;
+                return 0.008;
+              }}
+              linkDirectionalParticleWidth={(link: any) => {
+                const l = link as GraphLink;
+                if (hasHighlight && isPathLink(l)) return 4.0;
+                if (activeSelectedNodeId && getLinkState(l) === 'direct') return 4.5;
+                if (suspectOffenderNexus) return 2.8;
+                return 2.0;
+              }}
+              linkDirectionalParticleColor={(link: any) => {
+                const l = link as GraphLink;
+                if (activeSelectedNodeId && getLinkState(l) === 'direct') {
+                  return getDirectLinkColor(l);
+                }
+                if (suspectOffenderNexus) {
+                  return getLinkColor(l);
+                }
+                return '#38BDF8';
+              }}
+              d3AlphaDecay={0.02}
+              d3VelocityDecay={0.3}
+              cooldownTime={15000}
               warmupTicks={50}
-              rendererConfig={{ antialias: true }}
+              rendererConfig={{ antialias: true, alpha: true }}
               onNodeClick={handleNodeClick}
+              onBackgroundClick={handleBackgroundClick}
               onLinkClick={handleLinkClick}
               onEngineStop={() => {
-                if (fgRef.current && !hasError) {
-                  fgRef.current.zoomToFit(400, 30);
+                if (fgRef.current && !hasError && !activeSelectedNodeId) {
+                  fgRef.current.zoomToFit(600, 30, (node: any) => (degreeMap[node.id] || 0) >= 2);
                 }
               }}
             />
           </ErrorBoundary>
         )}
 
-        {/* Permanent labels for selection + highlighted connection path (Issue #230) */}
-        <NodePinOverlay fgRef={fgRef} nodes={labeledNodes} />
+        {/* Permanent HUD labels for Hero Node and 1-Hop Connected Neighbors */}
+        <NodePinOverlay
+          fgRef={fgRef}
+          nodes={labeledNodes}
+          selectedNodeId={activeSelectedNodeId}
+        />
 
         {/* Multi-source Intelligence & Provenance Legend overlay — collapsible */}
         <div
-          className={`absolute bottom-4 left-4 z-20 bg-[#0B1120] border border-[#334155] rounded-card shadow-2xl font-mono select-none pointer-events-auto transition-all duration-200 ${
+          className={`absolute bottom-4 left-4 z-20 bg-[#0B1120]/90 backdrop-blur-md border border-[#334155] rounded-card shadow-2xl font-mono select-none pointer-events-auto transition-all duration-200 ${
             legendOpen ? 'p-3 w-[240px]' : 'p-1.5 w-auto'
           }`}
         >
           <button
-            onClick={() => setLegendOpen(v => !v)}
+            onClick={() => setLegendOpen((v) => !v)}
             className="flex items-center gap-1.5 cursor-pointer text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider hover:text-emerald-400 transition-colors"
           >
-            <span className={`w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ${legendOpen ? '' : 'mr-0.5'}`} />
+            <span
+              className={`w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ${
+                legendOpen ? '' : 'mr-0.5'
+              }`}
+            />
             Legend
             {legendOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
           </button>
 
           {legendOpen && (
             <>
-              {/* Entity Shapes Section */}
-              <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1.5">
-                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Multi-Source Entities</span>
-                
-                <div className="grid grid-cols-2 gap-1 text-[9px]">
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)] shrink-0" />
-                    <span className="text-slate-200 truncate">Suspect</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)] shrink-0" />
-                    <span className="text-slate-200 truncate">Offender</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <svg className="w-2.5 h-2.5 text-[#06B6D4] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                      <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
-                    </svg>
-                    <span className="text-cyan-300 truncate">CDR (Hex)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <svg className="w-2.5 h-2.5 text-[#F59E0B] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                      <polygon points="8,1 15,8 8,15 1,8" />
-                    </svg>
-                    <span className="text-amber-300 truncate">Financial</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <svg className="w-2.5 h-2.5 text-[#A855F7] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
-                    </svg>
-                    <span className="text-purple-300 truncate">Surveillance</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                    <svg className="w-2.5 h-2.5 text-[#3B82F6] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                      <polygon points="5,1.5 11,1.5 14.5,5 14.5,11 11,14.5 5,14.5 1.5,11 1.5,5" />
-                    </svg>
-                    <span className="text-blue-300 truncate">Social Intel</span>
-                  </div>
-                </div>
-              </div>
+              {suspectOffenderNexus ? (
+                <>
+                  {/* Suspect-Offender Entities */}
+                  <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1.5">
+                    <span className="text-[8px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="w-2.5 h-2.5 text-amber-400" /> Suspect &harr; Offender Nexus
+                    </span>
 
-              {/* Relationship Links Section */}
-              <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1">
-                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Relationship Provenance</span>
-                <div className="flex flex-col gap-1 text-[8.5px]">
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                    <span className="text-emerald-300 font-semibold">Direct Fact (Verified)</span>
+                    <div className="grid grid-cols-2 gap-1 text-[9px]">
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)] shrink-0" />
+                        <span className="text-slate-200 truncate font-semibold">Suspect</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)] shrink-0" />
+                        <span className="text-slate-200 truncate font-semibold">Offender</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-                    <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
+
+                  {/* Suspect-Offender Connection Legend */}
+                  <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1">
+                    <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                      Criminal Relationship Ties
+                    </span>
+                    <div className="flex flex-col gap-1 text-[8.5px]">
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#EF4444] rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                        <span className="text-red-400 font-semibold">Co-accused (2+ FIRs)</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#06B6D4] rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                        <span className="text-cyan-300 font-semibold">Co-accused (1 FIR)</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#EC4899] rounded-full shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
+                        <span className="text-pink-300 font-semibold">Digital Extortion Syndicate</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#10B981] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                        <span className="text-emerald-300 font-semibold">Konkan Narcotics Cartel</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#F97316] rounded-full shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                        <span className="text-orange-300 font-semibold">Chain Snatchers Ring</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-[#A855F7] rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        <span className="text-purple-300 font-semibold">Deccan Land Mafia</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                    <span className="text-cyan-300 font-semibold">Communication (CDR)</span>
+                </>
+              ) : (
+                <>
+                  {/* Entity Shapes Section */}
+                  <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1.5">
+                    <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                      Multi-Source Entities
+                    </span>
+
+                    <div className="grid grid-cols-2 gap-1 text-[9px]">
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)] shrink-0" />
+                        <span className="text-slate-200 truncate">Suspect</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)] shrink-0" />
+                        <span className="text-slate-200 truncate">Offender</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <svg className="w-2.5 h-2.5 text-[#06B6D4] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                          <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
+                        </svg>
+                        <span className="text-cyan-300 truncate">CDR (Hex)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <svg className="w-2.5 h-2.5 text-[#F59E0B] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                          <polygon points="8,1 15,8 8,15 1,8" />
+                        </svg>
+                        <span className="text-amber-300 truncate">Financial</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <svg className="w-2.5 h-2.5 text-[#A855F7] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                          <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+                        </svg>
+                        <span className="text-purple-300 truncate">Surveillance</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                        <svg className="w-2.5 h-2.5 text-[#3B82F6] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                          <polygon points="5,1.5 11,1.5 14.5,5 14.5,11 11,14.5 5,14.5 1.5,11 1.5,5" />
+                        </svg>
+                        <span className="text-blue-300 truncate">Social Intel</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-                    <span className="text-amber-300 font-semibold">Financial Link</span>
+
+                  {/* Relationship Links Section */}
+                  <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1">
+                    <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                      Relationship Provenance
+                    </span>
+                    <div className="flex flex-col gap-1 text-[8.5px]">
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                        <span className="text-emerald-300 font-semibold">Direct Fact (Verified)</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                        <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                        <span className="text-cyan-300 font-semibold">Communication (CDR)</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                        <span className="text-amber-300 font-semibold">Financial Link</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        <span className="text-purple-300 font-semibold">Surveillance Report</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span className="w-3.5 h-1 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                        <span className="text-blue-300 font-semibold">Social / Digital Intel</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
-                    <span className="text-purple-300 font-semibold">Surveillance Report</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
-                    <span className="w-3.5 h-1 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                    <span className="text-blue-300 font-semibold">Social / Digital Intel</span>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
 
               <div className="border-t border-[#1E293B] pt-2 mt-2 flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
                 <span className="text-[8px] text-[#94A3B8]">
-                  {currentGraphData.nodes.length} nodes, {currentGraphData.links.length} edges
+                  {effectiveGraphData.nodes.length} nodes, {effectiveGraphData.links.length} edges
                 </span>
               </div>
             </>
           )}
         </div>
 
-        {/* Floating Zoom Controls (Issue #189: added center-selected button) */}
-        <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
-          <button
-            onClick={() => {
-              if (fgRef.current) {
-                const pos = fgRef.current.cameraPosition();
-                if (pos) {
-                  const scale = 0.7;
-                  fgRef.current.cameraPosition(
-                    { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
-                    undefined, 400
-                  );
+        {/* FLOATING GLASS CONTROL BAR */}
+        <div className="absolute bottom-4 right-4 z-20 pointer-events-auto select-none">
+          <div className="flex items-center gap-1 p-1 bg-[#0B1120]/85 backdrop-blur-md border border-[#334155]/80 rounded-xl shadow-2xl">
+            {/* Zoom In */}
+            <button
+              onClick={() => {
+                if (fgRef.current) {
+                  const pos = fgRef.current.cameraPosition();
+                  if (pos) {
+                    const scale = 0.72;
+                    fgRef.current.cameraPosition(
+                      { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
+                      undefined,
+                      350
+                    );
+                  }
                 }
-              }
-            }}
-            title="Zoom in"
-            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              if (fgRef.current) {
-                const pos = fgRef.current.cameraPosition();
-                if (pos) {
-                  const scale = 1.4;
-                  fgRef.current.cameraPosition(
-                    { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
-                    undefined, 400
-                  );
+              }}
+              title="Zoom in (+)"
+              className="p-2 bg-[var(--bg-tertiary)] hover:bg-sky-500/20 border border-border-color hover:border-sky-500/40 rounded-lg text-[var(--text-secondary)] hover:text-sky-300 transition-colors cursor-pointer"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            {/* Zoom Out */}
+            <button
+              onClick={() => {
+                if (fgRef.current) {
+                  const pos = fgRef.current.cameraPosition();
+                  if (pos) {
+                    const scale = 1.38;
+                    fgRef.current.cameraPosition(
+                      { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
+                      undefined,
+                      350
+                    );
+                  }
                 }
-              }
-            }}
-            title="Zoom out"
-            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => fgRef.current?.zoomToFit(400, 30)}
-            title="Fit all nodes in view"
-            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          {selectedNodeId && (
+              }}
+              title="Zoom out (-)"
+              className="p-2 bg-[var(--bg-tertiary)] hover:bg-sky-500/20 border border-border-color hover:border-sky-500/40 rounded-lg text-[var(--text-secondary)] hover:text-sky-300 transition-colors cursor-pointer"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+
+            {/* Fit Network (Focuses on connected graph) */}
+            <button
+              onClick={handleFitView}
+              title="Fit connected network in view"
+              className="p-2 bg-[var(--bg-tertiary)] hover:bg-sky-500/20 border border-border-color hover:border-sky-500/40 rounded-lg text-[var(--text-secondary)] hover:text-sky-300 transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+
+            {/* Focus Selected Node & Connections */}
             <button
               onClick={handleCenterSelected}
-              title="Center on selected node"
-              className="p-2 bg-[var(--accent-blue)]/15 hover:bg-[var(--accent-blue)]/25 border border-[var(--accent-blue)]/30 hover:border-[var(--accent-blue)]/50 rounded text-[var(--accent-blue)] cursor-pointer"
+              disabled={!activeSelectedNodeId}
+              title={
+                activeSelectedNodeId
+                  ? 'Center & Frame selected target and its connections'
+                  : 'Select a node to frame its connections'
+              }
+              className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+                activeSelectedNodeId
+                  ? 'bg-sky-500/20 hover:bg-sky-500/30 border-sky-400/50 text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                  : 'bg-[var(--bg-tertiary)]/50 border-border-color/40 text-[var(--text-disabled)] cursor-not-allowed opacity-50'
+              }`}
             >
               <Crosshair className="w-4 h-4" />
             </button>
-          )}
+
+            {/* Reset View & Deselect */}
+            <button
+              onClick={handleResetView}
+              title="Reset view and clear selection"
+              className="p-2 bg-[var(--bg-tertiary)] hover:bg-amber-500/20 border border-border-color hover:border-amber-500/40 rounded-lg text-[var(--text-secondary)] hover:text-amber-300 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+
+            {/* Divider */}
+            <div className="w-[1px] h-5 bg-[#334155] mx-0.5" />
+
+            {/* Local Neighborhood Isolation Toggle */}
+            <button
+              onClick={() => setIsolateLocalNetwork((prev) => !prev)}
+              disabled={!activeSelectedNodeId}
+              title={
+                activeSelectedNodeId
+                  ? isolateLocalNetwork
+                    ? 'Switch back to Full Network view'
+                    : 'Isolate Local Neighborhood (Selected + 1-Hop + 2-Hop)'
+                  : 'Select a node to isolate its local neighborhood'
+              }
+              className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                isolateLocalNetwork && activeSelectedNodeId
+                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                  : activeSelectedNodeId
+                  ? 'bg-[var(--bg-tertiary)] hover:bg-cyan-500/15 border-border-color text-[var(--text-secondary)] hover:text-cyan-300'
+                  : 'bg-[var(--bg-tertiary)]/50 border-border-color/40 text-[var(--text-disabled)] cursor-not-allowed opacity-50'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{isolateLocalNetwork && activeSelectedNodeId ? 'Local Net' : 'Full Net'}</span>
+            </button>
+
+            {/* Divider */}
+            <div className="w-[1px] h-5 bg-[#334155] mx-0.5" />
+
+            {/* Suspect <-> Offender Nexus Toggle Button */}
+            <button
+              onClick={onToggleSuspectOffenderNexus}
+              title={
+                suspectOffenderNexus
+                  ? 'Exit Suspect ↔ Offender Nexus (return to full multi-source intelligence graph)'
+                  : 'Isolate Suspect ↔ Offender Nexus (exclusively view suspect and offender criminal connections)'
+              }
+              className={`px-3 py-1.5 rounded-lg border text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                suspectOffenderNexus
+                  ? 'bg-gradient-to-r from-red-600/30 via-orange-600/30 to-amber-600/30 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                  : 'bg-[var(--bg-tertiary)] hover:bg-amber-500/20 border-border-color text-[var(--text-secondary)] hover:text-amber-300'
+              }`}
+            >
+              <Zap className={`w-3.5 h-3.5 ${suspectOffenderNexus ? 'text-amber-400 animate-pulse' : 'text-amber-400/80'}`} />
+              <span>{suspectOffenderNexus ? 'Susp ↔ Off (Active)' : 'Susp ↔ Off'}</span>
+            </button>
+          </div>
         </div>
       </div>
-
     </div>
   );
 };
 
-// Issue #230: HTML label layer that tracks selected/path nodes in screen space on
-// every animation frame. Only mounts while at least one node needs a permanent
-// label, so normal browsing keeps the canvas completely unlabeled.
-const NodePinOverlay = ({ fgRef, nodes }: { fgRef: RefObject<any>; nodes: GraphNode[] }) => {
+// =========================================================================
+// PERMANENT HUD LABELS FOR 1-HOP CONNECTED NEIGHBORS (CLEAN & NON-COLLIDING)
+// =========================================================================
+const NodePinOverlay = ({
+  fgRef,
+  nodes,
+  selectedNodeId,
+}: {
+  fgRef: RefObject<any>;
+  nodes: GraphNode[];
+  selectedNodeId: string | null;
+}) => {
   const elRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
+  // Never show pin for the hero target itself to prevent collisions with top status bar
+  const filteredNodes = useMemo(() => {
+    return nodes.filter((n) => n.id !== selectedNodeId);
+  }, [nodes, selectedNodeId]);
+
+  const nodesRef = useRef(filteredNodes);
+  nodesRef.current = filteredNodes;
 
   useEffect(() => {
-    const el = elRefs.current;
     let raf = 0;
     const loop = () => {
       const inst = fgRef.current;
       if (inst && inst.graphData && nodesRef.current.length > 0) {
         try {
-          const graph = inst.graphData();
           const toScreen = inst.graph2ScreenCoords.bind(inst);
-          for (const n of graph.nodes) {
-            const nodeEl = el[n.id];
+          for (const n of nodesRef.current) {
+            const nodeEl = elRefs.current[n.id];
             if (nodeEl && n.x !== undefined && n.y !== undefined && n.z !== undefined) {
               const pt = toScreen(n.x, n.y, n.z);
-              nodeEl.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0) translate(-50%, -230%)`;
+              nodeEl.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0) translate(-50%, -180%)`;
             }
           }
         } catch {
-          // Camera or graph not ready yet — try again next frame.
+          // Camera or graph not ready yet — try again next frame
         }
       }
       raf = requestAnimationFrame(loop);
@@ -833,31 +1545,74 @@ const NodePinOverlay = ({ fgRef, nodes }: { fgRef: RefObject<any>; nodes: GraphN
     return () => cancelAnimationFrame(raf);
   }, [fgRef]);
 
-  if (nodes.length === 0) return null;
+  if (filteredNodes.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 top-0 left-0 z-10 pointer-events-none overflow-hidden">
-      {nodes.map((n) => (
-        <div
-          key={n.id}
-          ref={(el) => { elRefs.current[n.id] = el; }}
-          className="absolute left-0 top-0 px-1.5 py-0.5 rounded border text-[8px] font-mono leading-tight whitespace-nowrap"
-          style={{
-            background: 'rgba(8,14,27,0.85)',
-            borderColor: 'rgba(34,211,238,0.5)',
-            color: '#E8EDF5',
-            opacity: 0.95,
-            textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-          }}
-        >
-          {n.name}
-        </div>
-      ))}
+    <div className="absolute inset-0 top-0 left-0 z-10 pointer-events-none overflow-hidden select-none">
+      {filteredNodes.map((n) => {
+        const color =
+          n.category === 'suspect'
+            ? '#EF4444'
+            : n.category === 'offender'
+            ? '#F97316'
+            : n.category === 'cdr'
+            ? '#06B6D4'
+            : n.category === 'financial_transaction'
+            ? '#F59E0B'
+            : n.category === 'surveillance_report'
+            ? '#A855F7'
+            : n.category === 'social_media_intel'
+            ? '#3B82F6'
+            : n.category === 'gang'
+            ? '#EC4899'
+            : '#10B981';
+
+        return (
+          <div
+            key={n.id}
+            ref={(el) => {
+              elRefs.current[n.id] = el;
+            }}
+            className="absolute left-0 top-0 rounded-md font-mono leading-tight whitespace-nowrap px-2.5 py-1 text-[9.5px] font-semibold border shadow-lg transition-opacity duration-150"
+            style={{
+              background: 'rgba(11, 17, 32, 0.92)',
+              backdropFilter: 'blur(8px)',
+              borderColor: `${color}99`,
+              color: '#f8fafc',
+              boxShadow: `0 0 10px ${color}33, 0 3px 8px rgba(0,0,0,0.85)`,
+              zIndex: 15,
+            }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{
+                  background: color,
+                  boxShadow: `0 0 6px ${color}`,
+                }}
+              />
+              <span className="truncate max-w-[150px]">{n.name}</span>
+              <span
+                className="text-[7.5px] uppercase tracking-wider px-1 py-0.2 rounded font-bold"
+                style={{
+                  background: `${color}25`,
+                  color: color,
+                  border: `1px solid ${color}40`,
+                }}
+              >
+                {n.category.replace(/_/g, ' ')}
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
 
-// Canvas-based fallback when WebGL crashes — renders the real graph data
+// =========================================================================
+// 2D CANVAS-BASED FALLBACK (WHEN WEBGL HARDWARE ACCELERATION IS DISABLED)
+// =========================================================================
 interface GraphFallbackProps {
   onNodeSelect?: (node: GraphNode) => void;
   onLinkSelect?: (link: GraphLink) => void;
@@ -884,31 +1639,15 @@ const FALLBACK_NODE_COLORS: Record<string, string> = {
   officer: '#14C997',
 };
 
-// Helper to draw clean regular 2D polygons on canvas
-function draw2DPolygon(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  sides: number,
-  rotation = 0
-) {
-  ctx.beginPath();
-  for (let i = 0; i < sides; i++) {
-    const angle = rotation + (i * 2 * Math.PI) / sides;
-    const px = x + radius * Math.cos(angle);
-    const py = y + radius * Math.sin(angle);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-}
-
-const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelect, isLight, graphData }) => {
+const GraphFallback: React.FC<GraphFallbackProps> = ({
+  onNodeSelect,
+  onLinkSelect,
+  isLight,
+  graphData,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Deterministic multi-ring layout computed from the actual node list
   const layout = useMemo(() => {
     const nodes = graphData?.nodes ?? [];
     const coords: Record<string, { x: number; y: number }> = {};
@@ -936,7 +1675,6 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Render at device pixel ratio for a sharp, HD-quality image
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const LOGICAL_W = 800;
     const LOGICAL_H = 500;
@@ -945,132 +1683,44 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     let animId: number;
-
     const { nodes: layoutNodes, links: layoutLinks, coords } = layout;
 
     const draw = () => {
       ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
-      // Draw particle flow animation lines with provenance & intelligence colors
-      layoutLinks.forEach(link => {
-        const start = coords[typeof link.source === 'object' ? link.source.id : link.source];
-        const end = coords[typeof link.target === 'object' ? link.target.id : link.target];
-        if (start && end) {
+      // Draw links
+      layoutLinks.forEach((link) => {
+        const sId = typeof link.source === 'object' ? link.source.id : link.source;
+        const tId = typeof link.target === 'object' ? link.target.id : link.target;
+        const p1 = coords[sId];
+        const p2 = coords[tId];
+        if (p1 && p2) {
           ctx.beginPath();
-          ctx.moveTo(start.x, start.y);
-          ctx.lineTo(end.x, end.y);
-          
-          const relType = (link.relationship_type || link.relationship || '').toUpperCase();
-          if (relType === 'COMMUNICATION' || relType.includes('CDR')) {
-            ctx.strokeStyle = isLight ? 'rgba(8, 145, 178, 0.85)' : 'rgba(6, 182, 212, 0.85)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([]);
-          } else if (relType === 'FINANCIAL' || relType.includes('TXN')) {
-            ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.85)' : 'rgba(245, 158, 11, 0.85)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([]);
-          } else if (relType === 'SURVEILLANCE') {
-            ctx.strokeStyle = isLight ? 'rgba(147, 51, 234, 0.85)' : 'rgba(168, 85, 247, 0.85)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([]);
-          } else if (relType === 'SOCIAL_DIGITAL') {
-            ctx.strokeStyle = isLight ? 'rgba(37, 99, 235, 0.85)' : 'rgba(59, 130, 246, 0.85)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([]);
-          } else if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
-            ctx.strokeStyle = isLight ? 'rgba(5, 150, 105, 0.9)' : 'rgba(16, 185, 129, 0.9)';
-            ctx.lineWidth = 2.8;
-            ctx.setLineDash([]);
-          } else if (link.verification_status === 'POTENTIAL' || link.provenance === 'ANALYTICAL_INFERENCE') {
-            ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.95)' : 'rgba(245, 158, 11, 0.95)';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([5, 4]);
-          } else if (link.is_demo_derived || link.provenance === 'DEMO_SEED' || link.provenance === 'MIXED') {
-            ctx.strokeStyle = isLight ? 'rgba(124, 58, 237, 0.8)' : 'rgba(168, 85, 247, 0.8)';
-            ctx.lineWidth = 2.0;
-            ctx.setLineDash([]);
-          } else {
-            ctx.strokeStyle = isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.55)';
-            ctx.lineWidth = 1.6;
-            ctx.setLineDash([]);
-          }
-          
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = isLight ? 'rgba(100, 116, 139, 0.4)' : 'rgba(148, 163, 184, 0.35)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Flow dot tracer
-          const time = Date.now() / 1500;
-          const ratio = (time) % 1.0;
-          const px = start.x + (end.x - start.x) * ratio;
-          const py = start.y + (end.y - start.y) * ratio;
-
-          ctx.beginPath();
-          ctx.arc(px, py, 2, 0, Math.PI * 2);
-          ctx.fillStyle = link.verification_status === 'VERIFIED' ? '#10b981' : '#f59e0b';
-          ctx.fill();
         }
       });
 
-      // Draw Nodes with distinctive 2D geometric shapes
+      // Draw nodes
       layoutNodes.forEach((node) => {
         const pt = coords[node.id];
         if (pt) {
-          const isHigh = node.category === 'suspect' || node.category === 'offender';
-          const size = isHigh ? 13 : 10;
-          const fill = FALLBACK_NODE_COLORS[node.category] ?? '#6A7A96';
-
-          // Helper to draw geometric shape path
-          const drawShapePath = (r: number) => {
-            switch (node.category) {
-              case 'cdr':
-                // Hexagon
-                draw2DPolygon(ctx, pt.x, pt.y, r * 1.1, 6, Math.PI / 6);
-                break;
-              case 'financial_transaction':
-                // Diamond (4-pointed rhombus)
-                draw2DPolygon(ctx, pt.x, pt.y, r * 1.25, 4, 0);
-                break;
-              case 'surveillance_report':
-                // Square / Cube
-                ctx.beginPath();
-                ctx.rect(pt.x - r, pt.y - r, r * 2, r * 2);
-                ctx.closePath();
-                break;
-              case 'social_media_intel':
-                // Octagon
-                draw2DPolygon(ctx, pt.x, pt.y, r * 1.1, 8, Math.PI / 8);
-                break;
-              default:
-                // Circle (Suspect, Offender, Victim, Location)
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                ctx.closePath();
-                break;
-            }
-          };
-
-          // Outer pulsing ring on selected
-          if (selectedNodeId === node.id) {
-            drawShapePath(size + 7);
-            ctx.strokeStyle = fill + '88';
-            ctx.lineWidth = 2.0;
-            ctx.stroke();
-          }
-
-          // Inner nodes
-          drawShapePath(size);
+          const fill = FALLBACK_NODE_COLORS[node.category] || '#8B5CF6';
+          const size = 10;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
           ctx.fillStyle = fill;
           ctx.fill();
-
-          // Subtle inner highlight border
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
 
-          // Text labels
-          ctx.font = '9px monospace';
-          ctx.fillStyle = selectedNodeId === node.id ? '#ffffff' : isLight ? '#334155' : '#A8B4CC';
-          ctx.fillText(node.name, pt.x - 30, pt.y - size - 4);
+          ctx.font = '10px monospace';
+          ctx.fillStyle = isLight ? '#334155' : '#e2e8f0';
+          ctx.fillText(node.name, pt.x - 20, pt.y - size - 4);
         }
       });
 
@@ -1079,20 +1729,17 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
 
     draw();
 
-    // Attach click listener targeting coordinates or links
     const handleCanvasClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
       let foundNode: GraphNode | null = null;
-
-      // Match node coordinate radius
       for (const node of layoutNodes) {
         const pt = coords[node.id];
         if (pt) {
           const dist = Math.hypot(clickX - pt.x, clickY - pt.y);
-          if (dist <= 20) {
+          if (dist <= 22) {
             foundNode = node;
             break;
           }
@@ -1102,53 +1749,15 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
       if (foundNode) {
         setSelectedNodeId(foundNode.id);
         onNodeSelect?.(foundNode);
-        return;
-      }
-
-      // Check if click was close to any link line
-      if (onLinkSelect) {
-        for (const link of layoutLinks) {
-          const start = coords[typeof link.source === 'object' ? link.source.id : link.source];
-          const end = coords[typeof link.target === 'object' ? link.target.id : link.target];
-          if (start && end) {
-            // Distance from point to line segment
-            const l2 = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
-            if (l2 === 0) continue;
-            let t = ((clickX - start.x) * (end.x - start.x) + (clickY - start.y) * (end.y - start.y)) / l2;
-            t = Math.max(0, Math.min(1, t));
-            const projX = start.x + t * (end.x - start.x);
-            const projY = start.y + t * (end.y - start.y);
-            const dist = Math.hypot(clickX - projX, clickY - projY);
-            if (dist <= 8) {
-              onLinkSelect(link);
-              break;
-            }
-          }
-        }
       }
     };
 
     canvas.addEventListener('click', handleCanvasClick);
-
     return () => {
       cancelAnimationFrame(animId);
       canvas.removeEventListener('click', handleCanvasClick);
     };
   }, [onNodeSelect, onLinkSelect, selectedNodeId, isLight, layout]);
-
-  if (layout.nodes.length === 0) {
-    return (
-      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-[var(--bg-surface)] p-4 text-center gap-2">
-        <AlertTriangle className="w-6 h-6 text-[var(--accent-amber)]" />
-        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-          No network records available to visualize
-        </span>
-        <span className="text-[9px] font-mono text-[var(--text-disabled)]">
-          Sync PostgreSQL into Neo4j or add linked FIR/case data first.
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div className="absolute inset-0 w-full h-full flex flex-col justify-between bg-[var(--bg-surface)] p-4 text-center">
@@ -1157,14 +1766,22 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
         <span>WEBGL DIRECT X ACCELERATION OFF - RELATIONAL MATRIX SIMULATOR RUNNING</span>
       </div>
       <div className="flex-grow flex items-center justify-center relative overflow-hidden">
-        <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain cursor-pointer max-w-[800px] max-h-[500px]" />
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={500}
+          className="w-full h-full object-contain cursor-pointer max-w-[800px] max-h-[500px]"
+        />
       </div>
     </div>
   );
 };
 
-// Simple React ErrorBoundary
-class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallback: React.ReactNode, onError?: () => void }, { hasError: boolean }> {
+// React ErrorBoundary for catching WebGL/Three.js crash
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode; onError?: () => void },
+  { hasError: boolean }
+> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false };
@@ -1175,7 +1792,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallbac
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("ThreeJS Network Graph component failed to load:", error, errorInfo);
+    console.error('ThreeJS Network Graph component failed to load:', error, errorInfo);
     if (this.props.onError) this.props.onError();
   }
 
