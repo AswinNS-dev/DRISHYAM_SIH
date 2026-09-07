@@ -60,7 +60,7 @@ def get_full_graph(
     min_risk: float = Query(0.0, ge=0.0, le=100.0),
     provenance_filter: str | None = Query(None),
     exclude_demo: bool = Query(False),
-    limit: int = Query(500, ge=1, le=2000, description="Max nodes returned. Large values may be slow."),
+    limit: int = Query(1500, ge=1, le=5000, description="Max nodes returned. Large values may be slow."),
     criminal_name: str | None = Query(None, max_length=255, description="Filter by criminal/suspect name (substring, case-insensitive)."),
     crime_type: str | None = Query(None, max_length=500, description="Comma-separated crime types (OR)."),
     district: str | None = Query(None, max_length=500, description="Comma-separated districts (OR, case-insensitive)."),

@@ -220,7 +220,20 @@ export interface AnomaliesResponse {
   anomalies: AnomalyRecord[];
 }
 
-export type NetworkNodeCategory = 'suspect' | 'offender' | 'case' | 'location' | 'victim' | 'gang' | 'vehicle' | 'weapon' | 'officer';
+export type NetworkNodeCategory =
+  | 'suspect'
+  | 'offender'
+  | 'case'
+  | 'location'
+  | 'victim'
+  | 'gang'
+  | 'vehicle'
+  | 'weapon'
+  | 'officer'
+  | 'cdr'
+  | 'financial_transaction'
+  | 'surveillance_report'
+  | 'social_media_intel';
 
 export interface NetworkNode {
   id: string;

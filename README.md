@@ -1,5 +1,4 @@
-# DRISHYAM
-## AI-Powered Criminal Network Intelligence & Analysis Platform — SIH26189
+# Drishyam - Crime Intelligence & Analytical Platform
 
 ## Problem Statement
 

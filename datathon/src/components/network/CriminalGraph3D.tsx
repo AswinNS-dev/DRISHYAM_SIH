@@ -1,8 +1,155 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
+import * as THREE from 'three';
 import { AlertTriangle, Maximize2, ChevronUp, ChevronDown, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
+
+// =========================================================================
+// 3D GLASS GEOMETRIES & MATERIALS CACHE (SUBTLE 3D GLASS / CRYSTAL EFFECT)
+// =========================================================================
+
+// Shared 3D geometries for multi-source intelligence entities
+const GEOMETRIES: Record<string, { outer: THREE.BufferGeometry; inner: THREE.BufferGeometry }> = {
+  // Suspect: Red sphere
+  suspect: {
+    outer: new THREE.SphereGeometry(6.5, 24, 24),
+    inner: new THREE.SphereGeometry(3.6, 16, 16),
+  },
+  // Offender: Orange sphere
+  offender: {
+    outer: new THREE.SphereGeometry(7.5, 24, 24),
+    inner: new THREE.SphereGeometry(4.2, 16, 16),
+  },
+  // CDR: Cyan hexagon (6-sided cylinder)
+  cdr: {
+    outer: new THREE.CylinderGeometry(6.2, 6.2, 5.5, 6),
+    inner: new THREE.CylinderGeometry(3.4, 3.4, 3.2, 6),
+  },
+  // Financial Transaction: Amber / Gold diamond (Octahedron)
+  financial_transaction: {
+    outer: new THREE.OctahedronGeometry(7.2, 0),
+    inner: new THREE.OctahedronGeometry(4.0, 0),
+  },
+  // Surveillance Report: Purple cube (Box)
+  surveillance_report: {
+    outer: new THREE.BoxGeometry(8.5, 8.5, 8.5),
+    inner: new THREE.BoxGeometry(4.5, 4.5, 4.5),
+  },
+  // Social Media Intel: Blue octagon (8-sided cylinder)
+  social_media_intel: {
+    outer: new THREE.CylinderGeometry(6.5, 6.5, 5.5, 8),
+    inner: new THREE.CylinderGeometry(3.5, 3.5, 3.2, 8),
+  },
+  case: {
+    outer: new THREE.BoxGeometry(7.0, 7.0, 7.0),
+    inner: new THREE.BoxGeometry(3.5, 3.5, 3.5),
+  },
+  location: {
+    outer: new THREE.ConeGeometry(6.0, 9.0, 6),
+    inner: new THREE.ConeGeometry(3.0, 5.0, 6),
+  },
+  victim: {
+    outer: new THREE.SphereGeometry(5.2, 16, 16),
+    inner: new THREE.SphereGeometry(2.8, 12, 12),
+  },
+  officer: {
+    outer: new THREE.IcosahedronGeometry(6.0, 0),
+    inner: new THREE.IcosahedronGeometry(3.2, 0),
+  },
+  default: {
+    outer: new THREE.SphereGeometry(5.5, 16, 16),
+    inner: new THREE.SphereGeometry(3.0, 12, 12),
+  },
+};
+
+const HALO_GEOMETRY = new THREE.TorusGeometry(9.0, 0.45, 12, 32);
+const HALO_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.9,
+});
+
+// Materials for subtle 3D glass / crystal effect with inner luminous core
+const createGlassMaterial = (color: number, opacity = 0.78) =>
+  new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.15,
+    metalness: 0.12,
+    transmission: 0.55,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+  });
+
+const createCoreMaterial = (color: number, opacity = 0.95) =>
+  new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity,
+  });
+
+const MATERIALS: Record<string, { outer: THREE.Material; inner: THREE.Material }> = {
+  suspect: {
+    outer: createGlassMaterial(0xef4444),
+    inner: createCoreMaterial(0xff6b6b),
+  },
+  offender: {
+    outer: createGlassMaterial(0xf97316),
+    inner: createCoreMaterial(0xffa040),
+  },
+  cdr: {
+    outer: createGlassMaterial(0x06b6d4, 0.82),
+    inner: createCoreMaterial(0x22d3ee),
+  },
+  financial_transaction: {
+    outer: createGlassMaterial(0xf59e0b, 0.85),
+    inner: createCoreMaterial(0xfde68a),
+  },
+  surveillance_report: {
+    outer: createGlassMaterial(0xa855f7),
+    inner: createCoreMaterial(0xd8b4fe),
+  },
+  social_media_intel: {
+    outer: createGlassMaterial(0x3b82f6),
+    inner: createCoreMaterial(0x93c5fd),
+  },
+  case: {
+    outer: createGlassMaterial(0x10b981),
+    inner: createCoreMaterial(0x6ee7b7),
+  },
+  location: {
+    outer: createGlassMaterial(0x0ea5e9),
+    inner: createCoreMaterial(0x7dd3fc),
+  },
+  victim: {
+    outer: createGlassMaterial(0x64748b, 0.7),
+    inner: createCoreMaterial(0x94a3b8, 0.85),
+  },
+  officer: {
+    outer: createGlassMaterial(0x14b8a6),
+    inner: createCoreMaterial(0x5eead4),
+  },
+  default: {
+    outer: createGlassMaterial(0x8b5cf6),
+    inner: createCoreMaterial(0xc4b5fd),
+  },
+};
+
+const SELECTED_MATERIALS = {
+  outer: createGlassMaterial(0xffffff, 0.9),
+  inner: createCoreMaterial(0xffffff, 1.0),
+};
+
+const PATH_MATERIALS = {
+  outer: createGlassMaterial(0x22d3ee, 0.95),
+  inner: createCoreMaterial(0xa5f3fc, 1.0),
+};
+
+const DIMMED_MATERIALS = {
+  outer: createGlassMaterial(0x475569, 0.22),
+  inner: createCoreMaterial(0x334155, 0.25),
+};
 
 export interface GraphNode {
   id: string;
@@ -230,18 +377,35 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   // Color matching for nodes
   const getNodeColor = (cat: string) => {
     switch (cat) {
-      case 'suspect': return '#C94A2A'; // Red
-      case 'offender': return '#D4820A'; // Amber
-      case 'location': return '#1E6FD9'; // Blue
-      case 'case': return '#0E9E78'; // Green
-      case 'victim': return '#6A7A96'; // Grey
+      case 'suspect': return '#EF4444'; // Red
+      case 'offender': return '#F97316'; // Orange
+      case 'cdr': return '#06B6D4'; // Cyan
+      case 'financial_transaction': return '#F59E0B'; // Amber / Gold
+      case 'surveillance_report': return '#A855F7'; // Purple
+      case 'social_media_intel': return '#3B82F6'; // Blue
+      case 'location': return '#0EA5E9'; // Sky
+      case 'case': return '#10B981'; // Green
+      case 'victim': return '#64748B'; // Grey
       case 'officer': return '#14C997'; // Teal
-      default: return '#6C43CC';
+      default: return '#8B5CF6';
     }
   };
 
-  // Color matching for link provenance (Issue #159)
+  // Color matching for link provenance & intelligence sources
   const getLinkColor = (link: GraphLink) => {
+    const relType = (link.relationship_type || link.relationship || '').toUpperCase();
+    if (relType === 'COMMUNICATION' || relType.includes('CDR') || relType.includes('CALL')) {
+      return isLight ? 'rgba(8, 145, 178, 0.85)' : 'rgba(6, 182, 212, 0.85)';
+    }
+    if (relType === 'FINANCIAL' || relType.includes('TRANSACTION') || relType.includes('TXN')) {
+      return isLight ? 'rgba(217, 119, 6, 0.85)' : 'rgba(245, 158, 11, 0.85)';
+    }
+    if (relType === 'SURVEILLANCE' || relType.includes('SURVEILLANCE') || relType.includes('CCTV')) {
+      return isLight ? 'rgba(147, 51, 234, 0.85)' : 'rgba(168, 85, 247, 0.85)';
+    }
+    if (relType === 'SOCIAL_DIGITAL' || relType.includes('SOCIAL') || relType.includes('TELEGRAM') || relType.includes('CYBER')) {
+      return isLight ? 'rgba(37, 99, 235, 0.85)' : 'rgba(59, 130, 246, 0.85)';
+    }
     if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
       return isLight ? 'rgba(5, 150, 105, 0.85)' : 'rgba(16, 185, 129, 0.85)';
     }
@@ -253,6 +417,67 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
     }
     return isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.55)';
   };
+
+  // Node 3D Glass Object with inner glow highlight and custom geometry
+  const nodeThreeObject = useCallback(
+    (node: any) => {
+      const cat = (node.category || 'default').toLowerCase();
+      const geom = GEOMETRIES[cat] || GEOMETRIES.default;
+      const isSelected = node.id === selectedNodeId;
+      const isPath = hasHighlight && isPathNode(node);
+      const isDimmed = hasHighlight && !isPath;
+
+      const mat = isSelected
+        ? SELECTED_MATERIALS
+        : isPath
+        ? PATH_MATERIALS
+        : isDimmed
+        ? DIMMED_MATERIALS
+        : MATERIALS[cat] || MATERIALS.default;
+
+      const group = new THREE.Group();
+
+      const outerMesh = new THREE.Mesh(geom.outer, mat.outer);
+      const innerMesh = new THREE.Mesh(geom.inner, mat.inner);
+
+      // Distinct geometric rotations
+      if (cat === 'cdr') {
+        outerMesh.rotation.x = Math.PI / 3;
+        outerMesh.rotation.z = Math.PI / 6;
+        innerMesh.rotation.x = Math.PI / 3;
+        innerMesh.rotation.z = Math.PI / 6;
+      } else if (cat === 'social_media_intel') {
+        outerMesh.rotation.x = Math.PI / 4;
+        outerMesh.rotation.y = Math.PI / 8;
+        innerMesh.rotation.x = Math.PI / 4;
+        innerMesh.rotation.y = Math.PI / 8;
+      } else if (cat === 'financial_transaction') {
+        outerMesh.rotation.y = Math.PI / 4;
+        innerMesh.rotation.y = Math.PI / 4;
+      }
+
+      group.add(outerMesh);
+      group.add(innerMesh);
+
+      if (isSelected) {
+        const ringMesh = new THREE.Mesh(HALO_GEOMETRY, HALO_MATERIAL);
+        ringMesh.rotation.x = Math.PI / 2;
+        group.add(ringMesh);
+      }
+
+      // Hierarchy and degree centrality scaling
+      const deg = degreeMap[node.id] || 0;
+      const isPerson = cat === 'suspect' || cat === 'offender';
+      const baseScale = isPerson
+        ? 1.0 + Math.min(deg * 0.08, 0.55)
+        : 0.85 + Math.min(deg * 0.05, 0.35);
+      const finalScale = isSelected ? baseScale * 1.3 : baseScale;
+      group.scale.set(finalScale, finalScale, finalScale);
+
+      return group;
+    },
+    [selectedNodeId, hasHighlight, isPathNode, degreeMap]
+  );
 
   // Slow orbital rotation when idle
   useEffect(() => {
@@ -294,26 +519,72 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               height={dimensions.height}
               backgroundColor={canvasBg}
               showNavInfo={false}
-              nodeLabel={(node) => `<div style="font-family:monospace;font-size:10px;line-height:1.4;pointer-events:none">
-                <b style="color:#e8edf5">${node.name}</b><br />
-                <span style="color:${getNodeColor(node.category)}">${(node.category || 'entity').toUpperCase()}</span>
-                <span style="color:#94a3b8"> &bull; risk ${node.riskScore ?? 0}% &bull; ${node.casesCount ?? 0} linked cases</span>
-                ${node.district ? `<br /><span style="color:#94a3b8">district ${node.district}</span>` : ''}
-              </div>`}
-              nodeColor={node => {
-                if (node.id === selectedNodeId) return '#FFFFFF';
-                if (hasHighlight && isPathNode(node)) return '#22D3EE';
-                if (hasHighlight) return isLight ? '#93A1B5' : '#3E4C63';
-                return getNodeColor(node.category);
+              nodeThreeObject={nodeThreeObject}
+              nodeLabel={(node) => {
+                const cat = (node.category || 'entity').toLowerCase();
+                const color = getNodeColor(node.category);
+                const badgeStyle = `display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:bold;letter-spacing:0.05em;text-transform:uppercase;background:${color}22;color:${color};border:1px solid ${color}55;`;
+
+                let detailsHtml = '';
+                if (cat === 'cdr') {
+                  detailsHtml = `
+                    <span style="color:#67e8f9">Phone: ${node.phone || node.name.replace(/^CDR:\s*/, '')}</span><br />
+                    <span style="color:#94a3b8">Type: Call Detail Record &bull; Active Telemetry</span>
+                    ${node.date ? `<br /><span style="color:#94a3b8">Logged: ${new Date(node.date).toLocaleString()}</span>` : ''}
+                  `;
+                } else if (cat === 'financial_transaction') {
+                  detailsHtml = `
+                    <span style="color:#fde68a">Evidence/Ledger: ${node.name}</span><br />
+                    <span style="color:#94a3b8">Status: ${node.status || 'Verified Ledger'} &bull; Risk: ${node.riskScore ?? 0}%</span>
+                    ${node.date ? `<br /><span style="color:#94a3b8">Timestamp: ${node.date}</span>` : ''}
+                  `;
+                } else if (cat === 'surveillance_report') {
+                  detailsHtml = `
+                    <span style="color:#d8b4fe">Surveillance: ${node.name}</span><br />
+                    <span style="color:#94a3b8">Priority: ${node.status || 'Active Intel'} &bull; District: ${node.district || 'Unassigned'}</span>
+                    ${node.date ? `<br /><span style="color:#94a3b8">Reported: ${new Date(node.date).toLocaleString()}</span>` : ''}
+                  `;
+                } else if (cat === 'social_media_intel') {
+                  detailsHtml = `
+                    <span style="color:#93c5fd">Digital Threat: ${node.name}</span><br />
+                    <span style="color:#94a3b8">Channel: Cyber Intelligence &bull; Risk: ${node.riskScore ?? 0}%</span>
+                    ${node.district ? `<br /><span style="color:#94a3b8">District: ${node.district}</span>` : ''}
+                  `;
+                } else if (cat === 'offender') {
+                  detailsHtml = `
+                    <span style="color:#fdba74">Status: ${node.status || 'Convicted / Known'} &bull; Risk: ${node.riskScore ?? 0}%</span><br />
+                    <span style="color:#94a3b8">Affiliation: ${node.gangAffiliation || 'Independent'} &bull; Cases: ${node.casesCount ?? 0}</span>
+                  `;
+                } else {
+                  detailsHtml = `
+                    <span style="color:#fca5a5">Risk: ${node.riskScore ?? 0}% &bull; Cases: ${node.casesCount ?? 0}</span>
+                    ${node.district ? `<br /><span style="color:#94a3b8">District: ${node.district}</span>` : ''}
+                    ${node.gangAffiliation ? `<br /><span style="color:#94a3b8">Gang: ${node.gangAffiliation}</span>` : ''}
+                  `;
+                }
+
+                return `
+                  <div style="
+                    background: rgba(11, 17, 32, 0.94);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 11px;
+                    line-height: 1.45;
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 15px ${color}33;
+                    backdrop-filter: blur(8px);
+                    max-width: 280px;
+                    pointer-events: none;
+                  ">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                      <b style="color:#f1f5f9;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${node.name}</b>
+                      <span style="${badgeStyle}">${cat.replace(/_/g, ' ')}</span>
+                    </div>
+                    ${detailsHtml}
+                  </div>
+                `;
               }}
-              nodeOpacity={selectedNodeId ? 0.35 : 1}
-              nodeVal={node => {
-                const deg = degreeMap[node.id] || 0;
-                const base = node.category === 'suspect' ? 18 + Math.min(deg * 3, 20) : 12 + Math.min(deg * 2, 14);
-                return hasHighlight && (isPathNode(node) || node.id === selectedNodeId) ? base + 7 : base;
-              }}
-              nodeResolution={24}
-              nodeRelSize={8}
               linkLabel={(link) => {
                 const l = link as GraphLink;
                 const provenance = l.provenance || 'DIRECT_DATABASE';
@@ -370,10 +641,10 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
         {/* Permanent labels for selection + highlighted connection path (Issue #230) */}
         <NodePinOverlay fgRef={fgRef} nodes={labeledNodes} />
 
-        {/* Provenance & Node Legend overlay (Issue #159) — collapsible */}
+        {/* Multi-source Intelligence & Provenance Legend overlay — collapsible */}
         <div
           className={`absolute bottom-4 left-4 z-20 bg-[#0B1120] border border-[#334155] rounded-card shadow-2xl font-mono select-none pointer-events-auto transition-all duration-200 ${
-            legendOpen ? 'p-3 w-[210px]' : 'p-1.5 w-auto'
+            legendOpen ? 'p-3 w-[240px]' : 'p-1.5 w-auto'
           }`}
         >
           <button
@@ -387,28 +658,74 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
           {legendOpen && (
             <>
-              <div className="flex flex-col gap-1.5 pt-2 mt-1">
-                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-                  <span className="w-4 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                  <span className="text-emerald-300 font-semibold text-[9px]">Direct Fact (Verified)</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-                  <span className="w-4 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-                  <span className="text-amber-300 font-semibold text-[9px]">Analytical Lead (Potential)</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-                  <span className="w-4 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
-                  <span className="text-purple-300 font-semibold text-[9px]">Demo / Seed Link</span>
+              {/* Entity Shapes Section */}
+              <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1.5">
+                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Multi-Source Entities</span>
+                
+                <div className="grid grid-cols-2 gap-1 text-[9px]">
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)] shrink-0" />
+                    <span className="text-slate-200 truncate">Suspect</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)] shrink-0" />
+                    <span className="text-slate-200 truncate">Offender</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <svg className="w-2.5 h-2.5 text-[#06B6D4] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                      <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
+                    </svg>
+                    <span className="text-cyan-300 truncate">CDR (Hex)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <svg className="w-2.5 h-2.5 text-[#F59E0B] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                      <polygon points="8,1 15,8 8,15 1,8" />
+                    </svg>
+                    <span className="text-amber-300 truncate">Financial</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <svg className="w-2.5 h-2.5 text-[#A855F7] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+                    </svg>
+                    <span className="text-purple-300 truncate">Surveillance</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
+                    <svg className="w-2.5 h-2.5 text-[#3B82F6] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                      <polygon points="5,1.5 11,1.5 14.5,5 14.5,11 11,14.5 5,14.5 1.5,11 1.5,5" />
+                    </svg>
+                    <span className="text-blue-300 truncate">Social Intel</span>
+                  </div>
                 </div>
               </div>
-              
+
+              {/* Relationship Links Section */}
               <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1">
-                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Entity Clearance</span>
-                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
-                  <span className="text-slate-200 text-[9px]">Suspect</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)] ml-1" />
-                  <span className="text-slate-200 text-[9px]">Offender</span>
+                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Relationship Provenance</span>
+                <div className="flex flex-col gap-1 text-[8.5px]">
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                    <span className="text-emerald-300 font-semibold">Direct Fact (Verified)</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                    <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                    <span className="text-cyan-300 font-semibold">Communication (CDR)</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                    <span className="text-amber-300 font-semibold">Financial Link</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                    <span className="text-purple-300 font-semibold">Surveillance Report</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                    <span className="text-blue-300 font-semibold">Social / Digital Intel</span>
+                  </div>
                 </div>
               </div>
 
@@ -552,16 +869,40 @@ interface GraphFallbackProps {
 }
 
 const FALLBACK_NODE_COLORS: Record<string, string> = {
-  suspect: '#C94A2A',
-  offender: '#D4820A',
-  location: '#1E6FD9',
-  victim: '#6A7A96',
-  case: '#0E9E78',
+  suspect: '#EF4444',
+  offender: '#F97316',
+  cdr: '#06B6D4',
+  financial_transaction: '#F59E0B',
+  surveillance_report: '#A855F7',
+  social_media_intel: '#3B82F6',
+  location: '#0EA5E9',
+  victim: '#64748B',
+  case: '#10B981',
   gang: '#6C43CC',
   vehicle: '#3D8AF0',
   weapon: '#F09C2E',
   officer: '#14C997',
 };
+
+// Helper to draw clean regular 2D polygons on canvas
+function draw2DPolygon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  sides: number,
+  rotation = 0
+) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const angle = rotation + (i * 2 * Math.PI) / sides;
+    const px = x + radius * Math.cos(angle);
+    const py = y + radius * Math.sin(angle);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
 
 const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelect, isLight, graphData }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -610,7 +951,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
     const draw = () => {
       ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
-      // Draw particle flow animation lines with provenance colors
+      // Draw particle flow animation lines with provenance & intelligence colors
       layoutLinks.forEach(link => {
         const start = coords[typeof link.source === 'object' ? link.source.id : link.source];
         const end = coords[typeof link.target === 'object' ? link.target.id : link.target];
@@ -619,7 +960,24 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
           
-          if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
+          const relType = (link.relationship_type || link.relationship || '').toUpperCase();
+          if (relType === 'COMMUNICATION' || relType.includes('CDR')) {
+            ctx.strokeStyle = isLight ? 'rgba(8, 145, 178, 0.85)' : 'rgba(6, 182, 212, 0.85)';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([]);
+          } else if (relType === 'FINANCIAL' || relType.includes('TXN')) {
+            ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.85)' : 'rgba(245, 158, 11, 0.85)';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([]);
+          } else if (relType === 'SURVEILLANCE') {
+            ctx.strokeStyle = isLight ? 'rgba(147, 51, 234, 0.85)' : 'rgba(168, 85, 247, 0.85)';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([]);
+          } else if (relType === 'SOCIAL_DIGITAL') {
+            ctx.strokeStyle = isLight ? 'rgba(37, 99, 235, 0.85)' : 'rgba(59, 130, 246, 0.85)';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([]);
+          } else if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
             ctx.strokeStyle = isLight ? 'rgba(5, 150, 105, 0.9)' : 'rgba(16, 185, 129, 0.9)';
             ctx.lineWidth = 2.8;
             ctx.setLineDash([]);
@@ -653,29 +1011,61 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
         }
       });
 
-      // Draw Nodes
+      // Draw Nodes with distinctive 2D geometric shapes
       layoutNodes.forEach((node) => {
         const pt = coords[node.id];
         if (pt) {
-          const isHigh = node.category === 'suspect';
-          const size = isHigh ? 13 : 9;
-
+          const isHigh = node.category === 'suspect' || node.category === 'offender';
+          const size = isHigh ? 13 : 10;
           const fill = FALLBACK_NODE_COLORS[node.category] ?? '#6A7A96';
+
+          // Helper to draw geometric shape path
+          const drawShapePath = (r: number) => {
+            switch (node.category) {
+              case 'cdr':
+                // Hexagon
+                draw2DPolygon(ctx, pt.x, pt.y, r * 1.1, 6, Math.PI / 6);
+                break;
+              case 'financial_transaction':
+                // Diamond (4-pointed rhombus)
+                draw2DPolygon(ctx, pt.x, pt.y, r * 1.25, 4, 0);
+                break;
+              case 'surveillance_report':
+                // Square / Cube
+                ctx.beginPath();
+                ctx.rect(pt.x - r, pt.y - r, r * 2, r * 2);
+                ctx.closePath();
+                break;
+              case 'social_media_intel':
+                // Octagon
+                draw2DPolygon(ctx, pt.x, pt.y, r * 1.1, 8, Math.PI / 8);
+                break;
+              default:
+                // Circle (Suspect, Offender, Victim, Location)
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+                ctx.closePath();
+                break;
+            }
+          };
 
           // Outer pulsing ring on selected
           if (selectedNodeId === node.id) {
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, size + 8, 0, Math.PI*2);
-            ctx.strokeStyle = fill + '66';
-            ctx.lineWidth = 1.5;
+            drawShapePath(size + 7);
+            ctx.strokeStyle = fill + '88';
+            ctx.lineWidth = 2.0;
             ctx.stroke();
           }
 
           // Inner nodes
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
+          drawShapePath(size);
           ctx.fillStyle = fill;
           ctx.fill();
+
+          // Subtle inner highlight border
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
 
           // Text labels
           ctx.font = '9px monospace';

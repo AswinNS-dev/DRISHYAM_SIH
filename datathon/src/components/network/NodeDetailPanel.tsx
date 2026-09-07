@@ -1,6 +1,22 @@
 import React from 'react';
 import type { GraphNode, GraphLink } from './CriminalGraph3D';
-import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Database, FileText, Share2, Waypoints, Focus } from 'lucide-react';
+import {
+  User,
+  ShieldAlert,
+  Phone,
+  MapPin,
+  Briefcase,
+  X,
+  Database,
+  FileText,
+  Share2,
+  Waypoints,
+  Focus,
+  CreditCard,
+  Video,
+  Globe,
+  Radio,
+} from 'lucide-react';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
@@ -43,8 +59,13 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
 
   const isSuspect = node.category === 'suspect';
   const isOffender = node.category === 'offender';
+  const isCdr = node.category === 'cdr';
+  const isFinancial = node.category === 'financial_transaction';
+  const isSurveillance = node.category === 'surveillance_report';
+  const isSocialIntel = node.category === 'social_media_intel';
   const isLocation = node.category === 'location';
   const isVictim = node.category === 'victim';
+  const isCase = node.category === 'case';
 
   const connectedLinks = links.filter((l) => {
     const sId = typeof l.source === 'object' ? l.source.id : l.source;
@@ -60,7 +81,35 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
     return { link, otherNode, otherName: otherNode?.name || otherId };
   });
 
-  const riskColor = node.riskScore >= 80 ? 'var(--accent-coral)' : node.riskScore >= 50 ? 'var(--accent-amber)' : 'var(--accent-teal)';
+  const riskColor =
+    node.riskScore >= 80
+      ? 'var(--accent-coral)'
+      : node.riskScore >= 50
+      ? 'var(--accent-amber)'
+      : 'var(--accent-teal)';
+
+  // Entity badge styling
+  const getHeaderIcon = () => {
+    if (isCdr) return <Radio className="w-5 h-5" />;
+    if (isFinancial) return <CreditCard className="w-5 h-5" />;
+    if (isSurveillance) return <Video className="w-5 h-5" />;
+    if (isSocialIntel) return <Globe className="w-5 h-5" />;
+    if (isLocation) return <MapPin className="w-5 h-5" />;
+    if (isCase) return <FileText className="w-5 h-5" />;
+    return <User className="w-5 h-5" />;
+  };
+
+  const getHeaderColorClass = () => {
+    if (isSuspect) return 'bg-red-500/10 text-red-400 border border-red-500/20';
+    if (isOffender) return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    if (isCdr) return 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
+    if (isFinancial) return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    if (isSurveillance) return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    if (isSocialIntel) return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+    if (isLocation) return 'bg-sky-500/10 text-sky-400 border border-sky-500/20';
+    if (isVictim) return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+  };
 
   return (
     <div className="h-full bg-secondary-bg border-l border-border-color flex flex-col select-none overflow-hidden">
@@ -69,18 +118,14 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
       <div className="p-4 pb-3 border-b border-border-color shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${
-              isSuspect ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
-              isOffender ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-              isLocation ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' :
-              isVictim ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-              'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-            }`}>
-              {isLocation ? <MapPin className="w-5 h-5" /> : <User className="w-5 h-5" />}
+            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${getHeaderColorClass()}`}>
+              {getHeaderIcon()}
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">{node.name}</h3>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 capitalize">{node.category}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 capitalize font-mono">
+                {node.category.replace(/_/g, ' ')}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0 transition-colors">
@@ -97,82 +142,253 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-sm">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
         
-        {/* Risk score */}
-        {!isVictim && !isLocation && (
-          <div className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: `${riskColor}08`, borderColor: `${riskColor}25` }}>
+        {/* CDR SPECIFIC DOSSIER CARD */}
+        {isCdr && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5" /> Call Detail Record Telemetry
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">
+                  {node.status?.toUpperCase() || 'ACTIVE'}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1.5 text-[12px] font-mono">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Target Phone:</span>
+                  <span className="text-cyan-300 font-bold">{node.phone || node.name.replace(/^CDR:\s*/, '')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Source Channel:</span>
+                  <span className="text-[var(--text-secondary)]">Telecom Identity Register</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">District:</span>
+                  <span className="text-[var(--text-secondary)]">{node.district || 'No source data available'}</span>
+                </div>
+                {node.date && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">Logged:</span>
+                    <span className="text-[var(--text-secondary)]">{new Date(node.date).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Risk Score</p>
-              <p className="text-xl font-bold mt-0.5" style={{ color: riskColor }}>{node.riskScore}%</p>
+              <p className="text-[10px] uppercase font-mono font-bold tracking-wide text-[var(--text-muted)] mb-1">
+                Telemetry Log
+              </p>
+              <p className="text-[12px] font-mono text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-2.5 rounded-lg border border-[var(--border-color)]">
+                {node.details || 'No source data available'}
+              </p>
             </div>
-            <ShieldAlert className="w-5 h-5 animate-pulse" style={{ color: riskColor }} />
           </div>
         )}
 
-        {/* Location severity */}
-        {isLocation && (
-          <div className="p-3 rounded-lg bg-sky-500/5 border border-sky-500/20">
-            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Location Severity</p>
-            <p className="text-xl font-bold text-sky-400 mt-0.5">{node.riskScore}%</p>
+        {/* FINANCIAL TRANSACTION SPECIFIC DOSSIER CARD */}
+        {isFinancial && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" /> Forensic Financial Ledger
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+                  {node.status?.toUpperCase() || 'LEDGER'}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1.5 text-[12px] font-mono">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Evidence Ref:</span>
+                  <span className="text-amber-300 font-bold">{node.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Forensic Risk:</span>
+                  <span className="text-amber-400 font-bold">{node.riskScore}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Audit Timestamp:</span>
+                  <span className="text-[var(--text-secondary)]">{node.date || 'No source data available'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] uppercase font-mono font-bold tracking-wide text-[var(--text-muted)] mb-1">
+                Forensic Audit Summary
+              </p>
+              <p className="text-[12px] font-mono text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-2.5 rounded-lg border border-[var(--border-color)]">
+                {node.details || 'No source data available'}
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Details */}
-        {node.details && (
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-1.5">Details</p>
-            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-color)]">
-              {node.details}
-            </p>
+        {/* SURVEILLANCE REPORT SPECIFIC DOSSIER CARD */}
+        {isSurveillance && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5" /> Surveillance Intercept Report
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">
+                  {node.status || 'ACTIVE'}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1.5 text-[12px] font-mono">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Severity Risk:</span>
+                  <span className="text-purple-300 font-bold">{node.riskScore}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Sector/District:</span>
+                  <span className="text-[var(--text-secondary)]">{node.district || 'No source data available'}</span>
+                </div>
+                {node.date && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">Reported At:</span>
+                    <span className="text-[var(--text-secondary)]">{new Date(node.date).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] uppercase font-mono font-bold tracking-wide text-[var(--text-muted)] mb-1">
+                Field Observation Log
+              </p>
+              <p className="text-[12px] font-mono text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-2.5 rounded-lg border border-[var(--border-color)]">
+                {node.details || 'No source data available'}
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Quick info */}
-        <div className="space-y-2">
-          {node.phone && (
-            <div className="flex items-center gap-2 text-[13px]">
-              <Phone className="w-3.5 h-3.5 text-[var(--accent-blue)] shrink-0" />
-              <span className="text-[var(--text-muted)]">Contact</span>
-              <span className="ml-auto text-[var(--text-primary)]">{node.phone}</span>
+        {/* SOCIAL MEDIA INTEL SPECIFIC DOSSIER CARD */}
+        {isSocialIntel && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-blue-400 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" /> Cyber & Social Media Intelligence
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">
+                  CYBER INTEL
+                </span>
+              </div>
+              <div className="mt-2 space-y-1.5 text-[12px] font-mono">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Threat Severity:</span>
+                  <span className="text-blue-300 font-bold">{node.riskScore}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">District:</span>
+                  <span className="text-[var(--text-secondary)]">{node.district || 'No source data available'}</span>
+                </div>
+                {node.date && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">Incident Date:</span>
+                    <span className="text-[var(--text-secondary)]">{node.date}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-          {node.gangAffiliation && (
-            <div className="flex items-center gap-2 text-[13px]">
-              <ShieldAlert className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
-              <span className="text-[var(--text-muted)]">Gang</span>
-              <span className="ml-auto text-[var(--text-primary)]">{node.gangAffiliation}</span>
+
+            <div>
+              <p className="text-[10px] uppercase font-mono font-bold tracking-wide text-[var(--text-muted)] mb-1">
+                Modus Operandi & Threat Telemetry
+              </p>
+              <p className="text-[12px] font-mono text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-2.5 rounded-lg border border-[var(--border-color)]">
+                {node.details || 'No source data available'}
+              </p>
             </div>
-          )}
-          {node.status && (
-            <div className="flex items-center gap-2 text-[13px]">
-              <Briefcase className="w-3.5 h-3.5 text-[var(--accent-teal)] shrink-0" />
-              <span className="text-[var(--text-muted)]">Status</span>
-              <span className="ml-auto text-[var(--text-primary)] capitalize">{node.status.replace(/_/g, ' ')}</span>
-            </div>
-          )}
-          {node.district && (
-            <div className="flex items-center gap-2 text-[13px]">
-              <MapPin className="w-3.5 h-3.5 text-[var(--accent-purple)] shrink-0" />
-              <span className="text-[var(--text-muted)]">District</span>
-              <span className="ml-auto text-[var(--text-primary)]">{node.district}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-[13px]">
-            <Briefcase className="w-3.5 h-3.5 text-[var(--accent-amber)] shrink-0" />
-            <span className="text-[var(--text-muted)]">Linked cases</span>
-            <span className="ml-auto text-[var(--text-primary)]">{node.casesCount}</span>
           </div>
-        </div>
+        )}
+
+        {/* STANDARD SUSPECT & OFFENDER DOSSIER (PRESERVED) */}
+        {!isCdr && !isFinancial && !isSurveillance && !isSocialIntel && (
+          <>
+            {/* Risk score */}
+            {!isVictim && !isLocation && (
+              <div className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: `${riskColor}08`, borderColor: `${riskColor}25` }}>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Risk Score</p>
+                  <p className="text-xl font-bold mt-0.5" style={{ color: riskColor }}>{node.riskScore}%</p>
+                </div>
+                <ShieldAlert className="w-5 h-5 animate-pulse" style={{ color: riskColor }} />
+              </div>
+            )}
+
+            {/* Location severity */}
+            {isLocation && (
+              <div className="p-3 rounded-lg bg-sky-500/5 border border-sky-500/20">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Location Severity</p>
+                <p className="text-xl font-bold text-sky-400 mt-0.5">{node.riskScore}%</p>
+              </div>
+            )}
+
+            {/* Details */}
+            {node.details && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-1.5">Details</p>
+                <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-color)]">
+                  {node.details}
+                </p>
+              </div>
+            )}
+
+            {/* Quick info */}
+            <div className="space-y-2">
+              {node.phone && (
+                <div className="flex items-center gap-2 text-[13px]">
+                  <Phone className="w-3.5 h-3.5 text-[var(--accent-blue)] shrink-0" />
+                  <span className="text-[var(--text-muted)]">Contact</span>
+                  <span className="ml-auto text-[var(--text-primary)]">{node.phone}</span>
+                </div>
+              )}
+              {node.gangAffiliation && (
+                <div className="flex items-center gap-2 text-[13px]">
+                  <ShieldAlert className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
+                  <span className="text-[var(--text-muted)]">Gang</span>
+                  <span className="ml-auto text-[var(--text-primary)]">{node.gangAffiliation}</span>
+                </div>
+              )}
+              {node.status && (
+                <div className="flex items-center gap-2 text-[13px]">
+                  <Briefcase className="w-3.5 h-3.5 text-[var(--accent-teal)] shrink-0" />
+                  <span className="text-[var(--text-muted)]">Status</span>
+                  <span className="ml-auto text-[var(--text-primary)] capitalize">{node.status.replace(/_/g, ' ')}</span>
+                </div>
+              )}
+              {node.district && (
+                <div className="flex items-center gap-2 text-[13px]">
+                  <MapPin className="w-3.5 h-3.5 text-[var(--accent-purple)] shrink-0" />
+                  <span className="text-[var(--text-muted)]">District</span>
+                  <span className="ml-auto text-[var(--text-primary)]">{node.district}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-[13px]">
+                <Briefcase className="w-3.5 h-3.5 text-[var(--accent-amber)] shrink-0" />
+                <span className="text-[var(--text-muted)]">Linked cases</span>
+                <span className="ml-auto text-[var(--text-primary)]">{node.casesCount}</span>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Connected entities */}
         {connectedNodes.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+              <p className="text-[10px] uppercase font-mono tracking-wide text-[var(--text-muted)]">
                 Connections ({connectedNodes.length})
               </p>
-              <span className="text-[9px] text-[var(--text-muted)]">Click person to navigate</span>
+              <span className="text-[9px] text-[var(--text-muted)]">Click entity to navigate</span>
             </div>
             <div className="space-y-1.5">
               {connectedNodes.slice(0, 10).map(({ otherName, link, otherNode }, i) => (
