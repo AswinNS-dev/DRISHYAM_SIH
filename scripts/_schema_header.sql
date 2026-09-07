@@ -1,0 +1,27 @@
+-- ============================================================
+-- DRISHYAM — AI-Powered Criminal Network Intelligence & Analysis
+-- SIH26189 | Complete Database Schema + Demo Data
+-- ============================================================
+-- Target: PostgreSQL 16 (Supabase-compatible). Paste this file into
+-- Supabase Dashboard → SQL Editor and run once, or apply with psql.
+--
+-- The schema mirrors the live application ORM (backend/app/models/):
+--   * Core: users, roles, role_permissions, audit_logs, notifications
+--   * Cases: crime_cases, firs (+ person links), evidence (+ custody),
+--     investigation_notes, reports
+--   * SIH26189 entity layer: organizations, vehicles, phone_numbers,
+--     events, entity_relationships (unified graph edges), case_entities,
+--     raw_ingested_data, data_sources, ingestion_jobs, suspicious_patterns,
+--     anomalies, network_analysis, network_metrics
+--
+-- Data-ingestion model (SIH26189 §9): ADMIN-ONLY ingestion writes raw
+-- rows into raw_ingested_data / import_staging_records with source,
+-- timestamp and processing status (pending | validated | imported |
+-- failed | archived). No NER/NLP is implemented; raw text is stored
+-- verbatim with a processing_status extension point.
+--
+-- RBAC tiers: ADMIN > ANALYST (crime_analyst) > INVESTIGATOR >
+-- VIEWER (+ support roles). ingestion:* permissions are granted to
+-- admin only and enforced by backend route guards.
+-- ============================================================
+

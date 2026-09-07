@@ -1,5 +1,5 @@
 """
-SAKSHA – Risk & Forecast Model Evaluation
+DRISHYAM – Risk & Forecast Model Evaluation
 
 Shared evaluation utilities for both DistrictRiskModel and DistrictForecastModel.
 No training. No inference. No FastAPI.

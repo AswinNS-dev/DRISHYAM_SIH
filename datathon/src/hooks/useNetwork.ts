@@ -6,6 +6,7 @@ import {
   getLinkAnalysis,
   getAIGraphInsights,
   findNetworkPath,
+  getHiddenNetworks,
   triggerNeo4jSync,
   type NetworkFilterParams,
   type NetworkPathResponse,
@@ -15,10 +16,11 @@ import type {
   ShortestPathResult,
   LinkAnalysisData,
   AIGraphInsightData,
+  HiddenNetworkResponse,
 } from '../services/api';
 import type { GraphNode, GraphLink } from '../components/network/CriminalGraph3D';
 
-export type NetworkWorkspaceView = '3d_explorer' | 'shortest_path' | 'path_finder' | 'gangs' | 'link_analysis' | 'timeline' | 'ai_insights';
+export type NetworkWorkspaceView = '3d_explorer' | 'shortest_path' | 'path_finder' | 'hidden_networks' | 'gangs' | 'link_analysis' | 'timeline' | 'ai_insights';
 
 export function useNetwork() {
   const [activeView, setActiveView] = useState<NetworkWorkspaceView>('3d_explorer');
@@ -54,6 +56,13 @@ export function useNetwork() {
 
   // Link Analysis state
   const [linkAnalysis, setLinkAnalysis] = useState<LinkAnalysisData | null>(null);
+
+  // Hidden network discovery state (SIH26189 friends-of-friends)
+  const [hiddenMinHops, setHiddenMinHops] = useState<number>(2);
+  const [hiddenMaxHops, setHiddenMaxHops] = useState<number>(2);
+  const [hiddenNetwork, setHiddenNetwork] = useState<HiddenNetworkResponse | null>(null);
+  const [hiddenLoading, setHiddenLoading] = useState<boolean>(false);
+  const [hiddenError, setHiddenError] = useState<string | null>(null);
 
   // AI Insights state
   const [insights, setInsights] = useState<AIGraphInsightData[]>([]);
@@ -169,6 +178,21 @@ export function useNetwork() {
     setConnectionError(null);
   }, []);
 
+  // Hidden network discovery (SIH26189 §15): friends-of-friends multi-hop scan.
+  const runHiddenNetworkDiscovery = useCallback(async () => {
+    setHiddenLoading(true);
+    setHiddenError(null);
+    try {
+      const res = await getHiddenNetworks(hiddenMinHops, hiddenMaxHops, effectiveFilters(networkFilters));
+      setHiddenNetwork(res);
+    } catch (err) {
+      setHiddenNetwork(null);
+      setHiddenError(err instanceof Error ? err.message : 'Hidden network discovery failed.');
+    } finally {
+      setHiddenLoading(false);
+    }
+  }, [hiddenMinHops, hiddenMaxHops, effectiveFilters, networkFilters]);
+
   // Invalidate a stale path as soon as the filtered network or the active
   // timeline window changes: the previous result was computed against a
   // different dataset and must not remain shown.
@@ -253,6 +277,14 @@ export function useNetwork() {
     connectionError,
     runConnectionSearch,
     clearConnectionPath,
+    hiddenMinHops,
+    setHiddenMinHops,
+    hiddenMaxHops,
+    setHiddenMaxHops,
+    hiddenNetwork,
+    hiddenLoading,
+    hiddenError,
+    runHiddenNetworkDiscovery,
     linkAnalysis,
     insights,
     timelineDateRange,

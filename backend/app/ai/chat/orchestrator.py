@@ -31,7 +31,7 @@ from app.ai.chat.response_validator import ResponseValidator
 logger = logging.getLogger(__name__)
 
 _REFUSAL_ANSWER = (
-    "I could not find matching records in the Saksha database for that query. "
+    "I could not find matching records in the Drishyam database for that query. "
     "No verified data sources were available to ground an answer, so I will not "
     "speculate. Please try rephrasing your question or check the case/FIR number."
 )
@@ -43,7 +43,7 @@ _PROVIDER_FAILURE_ANSWER = (
 
 
 class ChatOrchestrator:
-    """Main orchestrator for the Saksha AI Chat pipeline."""
+    """Main orchestrator for the Drishyam AI Chat pipeline."""
 
     def __init__(self) -> None:
         self.intent_router = IntentRouter()

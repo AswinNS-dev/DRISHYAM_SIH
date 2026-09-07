@@ -153,7 +153,7 @@ export function getPredictionLabel(
 export function getProvenanceLabel(provenance?: string | null): string | null {
   if (!provenance) return null;
   const normalized = provenance.trim().toUpperCase();
-  if (normalized === 'LIVE_DB' || normalized === 'LIVE') return 'SAKSHA Crime Records';
+  if (normalized === 'LIVE_DB' || normalized === 'LIVE') return 'DRISHYAM Crime Records';
   if (normalized === 'DEMO') return 'Demo Dataset';
   if (normalized.includes('DEMO') && normalized.includes('LIVE')) return 'Live + Demo Records';
   return normalized;

@@ -28,16 +28,16 @@ Criminal Name: Vikram Yadav | Age: 41 | Status: Incarcerated | Gang: Yadav Gang 
 _SAMPLE_STATS = """### System Clock
 Current date and time: 2026-08-29 10:00 (Saturday)
 
-### Saksha Analytics Engine - Summary
+### Drishyam Analytics Engine - Summary
 Total crimes: 60, Open cases: 42, Total FIRs: 11, Resolution rate: 30%.
 
-### Saksha Analytics Engine - District Comparison
+### Drishyam Analytics Engine - District Comparison
 District Bengaluru Urban has 20 registered crime cases, District Mysuru has 10 registered crime cases, District Dharwad has 8 registered crime cases, District Belagavi has 6 registered crime cases.
 
-### Saksha Analytics Engine - Category Breakdown
+### Drishyam Analytics Engine - Category Breakdown
 Category Cyber Crime accounts for 15 cases, Category Theft & Burglaries accounts for 12 cases, Category Narcotics accounts for 9 cases.
 
-### Saksha Analytics Engine - Recent Activity
+### Drishyam Analytics Engine - Recent Activity
 System date/time now: 2026-08-29 10:00:00
 Period analyzed: 7 days
 New crime cases registered: 3
@@ -45,16 +45,16 @@ New FIRs filed: 1
 Most recent case on file: CR-2026-MYS-001
 Most recent FIR on file: FIR-789/MYS/2026
 
-### Saksha PostgreSQL Database - Fir
+### Drishyam PostgreSQL Database - Fir
 FIR Number: 2026/104 | Complainant: K. S. Narayanan | Status: Open | Sections: 420/468 IPC | Filed: 2026-08-20 10:00 | Narrative: Cheating and forgery of documents at a Bengaluru bank. | Accused/Suspects: Vikram Yadav
 
-### Saksha PostgreSQL Database - Cases
+### Drishyam PostgreSQL Database - Cases
 Case: CR-2026-MYS-001 | Status: Under Investigation | Priority: High | Progress: 40% | Description: Burglary at Mysuru residence. | MO Tags: lock-picking, night-time | Category: Theft & Burglaries | Location: Mysuru, Devaraja | Occurred: 2026-08-01 02:00 | Reported: 2026-08-01 09:00 | Linked FIRs: FIR-789/MYS/2026 | Assigned Officer: Ravi Kumar (IO-3921)
 
-### Saksha PostgreSQL Database - Criminal
+### Drishyam PostgreSQL Database - Criminal
 Name: Ramu Swamy | Status: At Large | Aliases: R. Swamy | Gender: Male | Address: Hassan | MO: Burglary and theft primarily in residential areas | Marks: birthmark on left hand
 
-### Saksha Neo4j Graph Database - Person Network
+### Drishyam Neo4j Graph Database - Person Network
 Node: Ramu Swamy (Type: Criminal, Risk: 0.8)
 Node: Vikram Yadav (Type: Criminal, Risk: 0.9)
 Link: Ramu Swamy --[KNOWS]--> Vikram Yadav
@@ -107,7 +107,7 @@ def test_count_question_returns_number():
 
 def test_smalltalk_greeting():
     out = _local("hello")
-    assert "SAKSHA AI" in out
+    assert "DRISHYAM AI" in out
 
 
 def test_gratitude_reply():

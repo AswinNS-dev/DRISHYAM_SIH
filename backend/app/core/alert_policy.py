@@ -131,7 +131,7 @@ class AnomalyThresholds:
 # ---------------------------------------------------------------------------
 # Incident priority factors
 #
-# Only factors that actually exist in the SAKSHA data model are listed.
+# Only factors that actually exist in the DRISHYAM data model are listed.
 # These map to columns on CrimeCase, Criminal, FIR, and Location.
 # ---------------------------------------------------------------------------
 

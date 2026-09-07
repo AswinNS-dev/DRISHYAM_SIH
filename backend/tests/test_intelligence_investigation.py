@@ -1,4 +1,4 @@
-"""SAKSHA Pattern-to-Network Investigation & Evidence Intelligence Tests (#250).
+"""DRISHYAM Pattern-to-Network Investigation & Evidence Intelligence Tests (#250).
 
 Verifies the provenance-aware investigation layer that consumes the #249
 ``UnifiedIntelligenceResult`` contract:
@@ -54,7 +54,7 @@ def _make_user(db_session, username: str, role_name: str) -> User:
         db_session.flush()
     user = User(
         username=username,
-        email=f"{username}@test.saksha.org",
+        email=f"{username}@test.drishyam.org",
         full_name=username.replace("-", " ").title(),
         hashed_password=hash_password("Password123!"),
         role_id=role.id,
@@ -277,7 +277,7 @@ def _pattern(db_session, seeded, *, fir_numbers=None, entity_ids=None, pattern_t
             "suggested_intervention": {"district": "Bengaluru Urban"},
         },
         "ml_status": "HYBRID",
-        "model_name": "SAKSHA Intelligence Fusion",
+        "model_name": "DRISHYAM Intelligence Fusion",
         "model_version": "2.4.0",
         "detection_timestamp": datetime.now(timezone.utc).isoformat(),
         "explanation": "Pattern: Emerging Theft\nBaseline: 2\nCurrent: 5\nRisk Score: 0.72\nRecommended Action: patrol_surge",
@@ -467,7 +467,7 @@ def test_why_this_insight_has_methodology_and_safety_note(db_session):
     why = view["why_this_insight"]
     assert "Emerging Theft" in why["summary"]
     assert len(why["signals"]) == 3
-    assert why["methodology"]["model_name"] == "SAKSHA Intelligence Fusion"
+    assert why["methodology"]["model_name"] == "DRISHYAM Intelligence Fusion"
     assert why["methodology"]["analytics_available"]["forecast"] == "AVAILABLE"
     assert "PostgreSQL operational records" in why["data_sources"][0]
     assert why["safety_note"] == SAFETY_NOTE

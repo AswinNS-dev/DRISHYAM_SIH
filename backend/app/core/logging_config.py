@@ -1,4 +1,4 @@
-﻿"""Application-wide logging configuration using loguru."""
+"""Application-wide logging configuration using loguru."""
 import sys
 from pathlib import Path
 
@@ -28,7 +28,7 @@ def configure_logging() -> None:
         colorize=True,
     )
 
-    log_path = Path("logs/saksha_backend.log")
+    log_path = Path("logs/drishyam_backend.log")
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logger.add(
         log_path,

@@ -39,6 +39,21 @@ from app.models.identity import (
 )
 from app.models.model_update import ModelUpdateJob
 from app.models.face_identity import FaceIdentity
+from app.models.intel_entity import (
+    Organization,
+    PhoneNumber,
+    Vehicle,
+    IntelEvent,
+    EntityRelationship,
+    IngestionRecord,
+    DataSource,
+    IngestionJob,
+    CaseEntityLink,
+    SuspiciousPattern,
+    IntelAnomaly,
+    NetworkAnalysisRun,
+    NetworkMetric,
+)
 
 __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
@@ -54,5 +69,9 @@ __all__ = [
     "ProxyPattern", "ProxyPatternEvidence",
     "ModelUpdateJob",
     "FaceIdentity",
+    "Organization", "PhoneNumber", "Vehicle", "IntelEvent",
+    "EntityRelationship", "IngestionRecord",
+    "DataSource", "IngestionJob", "CaseEntityLink",
+    "SuspiciousPattern", "IntelAnomaly", "NetworkAnalysisRun", "NetworkMetric",
 ]
 

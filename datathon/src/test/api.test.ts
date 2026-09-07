@@ -39,7 +39,7 @@ describe('apiRequest', () => {
     window.addEventListener('auth:session-expired', expired);
     fetchMock.mockResolvedValue(new Response('{}', { status: 401 }));
     await expect(apiRequest('/notifications')).rejects.toThrow(/Session expired/);
-    expect(sessionStorage.getItem('saksha_access_token')).toBeNull();
+    expect(sessionStorage.getItem('drishyam_access_token')).toBeNull();
     expect(expired).toHaveBeenCalled();
     window.removeEventListener('auth:session-expired', expired);
   });
@@ -64,8 +64,8 @@ describe('apiRequest', () => {
   it('clearStoredTokens removes both tokens', () => {
     setStoredTokens({ accessToken: 'a', refreshToken: 'b' });
     clearStoredTokens();
-    expect(sessionStorage.getItem('saksha_access_token')).toBeNull();
-    expect(sessionStorage.getItem('saksha_refresh_token')).toBeNull();
+    expect(sessionStorage.getItem('drishyam_access_token')).toBeNull();
+    expect(sessionStorage.getItem('drishyam_refresh_token')).toBeNull();
   });
 });
 

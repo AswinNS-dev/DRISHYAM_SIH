@@ -1,8 +1,8 @@
-# SAKSHA Network Intelligence: Provenance, Grounding & Evidence Verification Model
+# DRISHYAM Network Intelligence: Provenance, Grounding & Evidence Verification Model
 
 ## 1. Overview & Core Mission
 
-SAKSHA's Network Intelligence engine provides high-dimensional graph correlation and relational linkage analysis across criminal records, suspects, crime cases (FIRs), investigating officers, and incident jurisdictions.
+DRISHYAM's Network Intelligence engine provides high-dimensional graph correlation and relational linkage analysis across criminal records, suspects, crime cases (FIRs), investigating officers, and incident jurisdictions.
 
 To uphold strict evidentiary standards, **no relationship is ever fabricated or hallucinated**. Every node, relationship, and graph edge carries an immutable provenance metadata footprint, distinguishing direct database records from analytical inferences and demo training datasets.
 

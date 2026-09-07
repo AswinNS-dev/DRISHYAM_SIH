@@ -1,5 +1,5 @@
 // ============================================================
-// SAKSHA — Neo4j Graph Schema
+// DRISHYAM — Neo4j Graph Schema
 // Nodes: Criminal, Victim, Officer, Case, Vehicle, Weapon, Organization, Location
 // Relationships: KNOWS, ASSOCIATED_WITH, USED, ARRESTED_BY, INVESTIGATED_BY,
 //                MEMBER_OF, VISITED, OWNS

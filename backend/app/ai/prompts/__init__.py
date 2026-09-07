@@ -1,4 +1,4 @@
-"""Prompt helpers for Saksha AI assistants."""
+"""Prompt helpers for Drishyam AI assistants."""
 
 from .chat import build_answer_prompt, build_summary_prompt
 

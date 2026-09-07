@@ -1,6 +1,6 @@
 """Victimology service — repeat-victimization detection, vulnerability scoring, witness risk.
 
-Closes gap M5 of the Saksha gap-closure issue by adding a criminological
+Closes gap M5 of the Drishyam gap-closure issue by adding a criminological
 intelligence layer over victim records. Analytics are framed against standard
 criminological theory:
 

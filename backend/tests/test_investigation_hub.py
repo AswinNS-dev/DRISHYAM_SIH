@@ -162,7 +162,7 @@ def test_interpret_mixed_kannada(investigator_client):
 
 
 def test_image_search_is_honest_fallback(investigator_client):
-    """No face-matching engine ships with SAKSHA, so the endpoint must not fabricate."""
+    """No face-matching engine ships with DRISHYAM, so the endpoint must not fabricate."""
     c = investigator_client
     r = c.post(f"{HUB}/image-search")
     assert r.status_code == 200, r.text

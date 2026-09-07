@@ -3,7 +3,7 @@
 Closes M1 (legacy Excel/CSV ingestion) and M2 (CCTNS interoperability) of the
 gap-closure issue, plus issue 5 (P1): every upload passes through an import
 job, row-level staging, validation, deduplication, reconciliation and quality
-grading. Nothing reaches trusted Saksha tables until an administrator promotes
+grading. Nothing reaches trusted Drishyam tables until an administrator promotes
 the staged records; promoted rows carry full source provenance and can be
 traced (and rolled back) from the API.
 
@@ -48,12 +48,16 @@ from app.services.ingest_service import (
 router = APIRouter(
     prefix="/data-import",
     tags=["Data Import"],
-    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))],
+    # SIH26189: data ingestion is an ADMIN-ONLY capability. Investigators,
+    # analysts and viewers may never stage, promote, or roll back ingestion
+    # jobs. Read-only job/lineage inspection is likewise restricted to admin.
+    dependencies=[Depends(require_roles(ROLE_ADMIN))],
 )
 
-# Administrative operations gated behind a stricter role set (issue 5 §23).
+# Kept for backwards compatibility with the two-tier documentation; every
+# mutating operation now resolves to the admin-only router guard above.
 admin_required = Depends(require_roles(ROLE_ADMIN))
-import_operators = Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST))
+import_operators = Depends(require_roles(ROLE_ADMIN))
 
 
 def _load_report(job: ImportJob) -> list:
@@ -91,10 +95,10 @@ def list_import_entities(current_user: User = Depends(get_current_user)):
             for entity, specs in ENTITY_SPECS.items()
         ],
         "profiles": [
-            {"profile": "standard", "description": "Saksha-native column templates"},
+            {"profile": "standard", "description": "Drishyam-native column templates"},
             {
                 "profile": "cctns",
-                "description": "Maps CCTNS/ICJS extract headers onto Saksha columns",
+                "description": "Maps CCTNS/ICJS extract headers onto Drishyam columns",
                 "sample_mappings": {k: v for k, v in list(CCTNS_COLUMN_MAPS["crime_cases"].items())[:6]},
             },
         ],
@@ -116,7 +120,7 @@ def download_template(
     if entity_type not in VALID_IMPORT_ENTITIES:
         return Response(status_code=404, content="Unknown entity type")
     content, media_type, extension = build_template(entity_type, export_format)
-    filename = f"saksha_{entity_type}_import_template.{extension}"
+    filename = f"drishyam_{entity_type}_import_template.{extension}"
     return Response(content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
@@ -308,7 +312,7 @@ def promote_job_records(
     _admin_ok: None = admin_required,
     current_user: User = Depends(get_current_user),
 ):
-    """ADMIN ONLY: promote eligible staged records into trusted Saksha tables."""
+    """ADMIN ONLY: promote eligible staged records into trusted Drishyam tables."""
     found = _get_job(db, job_id)
     if isinstance(found, Response):
         return found

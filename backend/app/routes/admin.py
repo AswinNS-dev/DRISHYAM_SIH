@@ -32,20 +32,55 @@ PERMISSIONS = {
     "cases:view", "cases:create", "cases:update", "cases:delete",
     "firs:view", "firs:create", "firs:update", "firs:delete",
     "criminals:view", "criminals:create", "criminals:update", "criminals:delete",
+    "victims:view", "victims:create", "victims:update", "victims:delete",
     "evidence:view", "evidence:create", "evidence:update", "evidence:delete", "evidence:export",
     "reports:view", "reports:generate", "reports:export",
+    "network:view", "network:analyze",
+    "anomalies:view", "anomalies:review",
+    "ingestion:view", "ingestion:run", "ingestion:promote", "ingestion:rollback",
+    "datasources:manage",
+    "audit:view",
     "admin:users", "admin:roles", "admin:audit", "admin:settings",
-    "ai:view", "network:view",
+    "ai:view",
 }
 
+# SIH26189 role tiers: ADMIN (full control incl. ingestion), ANALYST
+# (crime_analyst — analytics + networks, NO ingestion), INVESTIGATOR (case/FIR/
+# evidence work, NO ingestion), plus support roles. VIEWER is read-only.
+# `ingestion:*` is granted to admin ONLY — enforced by the data-import router
+# guard and asserted by tests/test_data_import.py.
 DEFAULT_ROLE_PERMISSIONS = {
     "admin": sorted(PERMISSIONS),
-    "crime_analyst": ["dashboard:view", "cases:view", "criminals:view", "evidence:view", "reports:view", "reports:generate", "reports:export", "ai:view", "network:view"],
-    "investigator": ["dashboard:view", "cases:view", "cases:update", "firs:view", "firs:create", "firs:update", "criminals:view", "evidence:view", "evidence:create", "evidence:update", "reports:view"],
-    "inspector": ["dashboard:view", "cases:view", "cases:update", "firs:view", "criminals:view", "evidence:view", "reports:view", "reports:export"],
-    "forensic": ["dashboard:view", "cases:view", "evidence:view", "evidence:create", "evidence:update", "evidence:export", "reports:view"],
-    "policymaker": ["dashboard:view", "cases:view", "reports:view", "reports:export", "ai:view"],
-    "viewer": ["dashboard:view", "cases:view", "criminals:view", "reports:view"],
+    "crime_analyst": [
+        "dashboard:view", "cases:view", "criminals:view", "victims:view",
+        "evidence:view", "reports:view", "reports:generate", "reports:export",
+        "network:view", "network:analyze", "anomalies:view", "ai:view",
+    ],
+    "investigator": [
+        "dashboard:view", "cases:view", "cases:update", "firs:view", "firs:create",
+        "firs:update", "criminals:view", "criminals:create", "criminals:update",
+        "victims:view", "victims:create", "victims:update",
+        "evidence:view", "evidence:create", "evidence:update",
+        "reports:view", "reports:generate", "network:view", "network:analyze",
+        "anomalies:view", "ai:view",
+    ],
+    "inspector": [
+        "dashboard:view", "cases:view", "cases:update", "firs:view", "firs:update",
+        "criminals:view", "evidence:view", "reports:view", "reports:export",
+        "network:view", "anomalies:view", "ai:view",
+    ],
+    "forensic": [
+        "dashboard:view", "cases:view", "evidence:view", "evidence:create",
+        "evidence:update", "evidence:export", "reports:view",
+    ],
+    "policymaker": [
+        "dashboard:view", "cases:view", "reports:view", "reports:export",
+        "network:view", "anomalies:view", "ai:view",
+    ],
+    "viewer": [
+        "dashboard:view", "cases:view", "criminals:view", "victims:view",
+        "reports:view", "network:view",
+    ],
 }
 
 
@@ -461,7 +496,7 @@ def export_audit_logs(db: Session = Depends(get_db), current_user: User = Depend
     writer.writerow(["timestamp", "user", "role", "action", "module", "record_id", "status", "ip", "details"])
     for item in rows:
         writer.writerow([item.timestamp, item.user.full_name if item.user else "", item.user.role.name if item.user and item.user.role else "", item.action, item.resource_type, item.resource_id, "success", item.ip_address, item.details])
-    return Response(content=buffer.getvalue().encode("utf-8"), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="saksha_audit_logs.csv"'})
+    return Response(content=buffer.getvalue().encode("utf-8"), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="drishyam_audit_logs.csv"'})
 
 
 @router.get("/settings")

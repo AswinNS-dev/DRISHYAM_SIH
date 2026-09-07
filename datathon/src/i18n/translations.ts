@@ -4,9 +4,6 @@ export interface TranslationSet {
   // Navigation
   nav_dashboard: string;
   nav_command_center: string;
-  nav_intelligence: string;
-  nav_intelligence_engine: string;
-  nav_intelligence_fusion: string;
   nav_fir: string;
   nav_hotspot: string;
   nav_network: string;
@@ -27,7 +24,6 @@ export interface TranslationSet {
   nav_settings: string;
   nav_admin: string;
   nav_docs: string;
-  nav_identity: string;
   nav_face_recognition: string;
 
   // Common actions
@@ -370,9 +366,6 @@ const en: TranslationSet = {
   // Navigation
   nav_dashboard: 'Dashboard',
   nav_command_center: 'Command Center',
-  nav_intelligence: 'Intelligence',
-  nav_intelligence_engine: 'Intelligence Engine',
-  nav_intelligence_fusion: 'Intelligence Fusion',
   nav_fir: 'FIR',
   nav_hotspot: 'Hotspots',
   nav_network: 'Network',
@@ -393,7 +386,6 @@ const en: TranslationSet = {
   nav_settings: 'Settings',
   nav_admin: 'Admin',
   nav_docs: 'Docs',
-  nav_identity: 'Identity',
   nav_face_recognition: 'Face ID',
 
   // Common actions
@@ -565,7 +557,7 @@ const en: TranslationSet = {
   evidence_hash: 'File Hash',
 
   // Crime Cases
-  cc_title: 'SAKSHA Crime Intelligence Cases',
+  cc_title: 'DRISHYAM Crime Intelligence Cases',
   cc_subtitle: 'OPERATOR SYSTEM PROFILE CLEARANCE LEVEL',
   cc_create: 'Create Crime Case',
   cc_search_hint: 'Search by case number, description...',
@@ -607,7 +599,7 @@ const en: TranslationSet = {
   notifications_mark_read: 'Mark as Read',
 
   // Login
-  login_title: 'Saksha',
+  login_title: 'Drishyam',
   login_subtitle: 'Crime Intelligence & Analytical Platform',
   login_badge_hint: 'Enter your Badge ID to sign in',
   login_face_auth: 'Face Authentication',
@@ -722,7 +714,7 @@ const en: TranslationSet = {
   page_notif_inform_station: 'Inform Station HO',
 
   // AI Chat page
-  page_aichat_title: 'Saksha AI Analyst',
+  page_aichat_title: 'Drishyam AI Analyst',
   page_aichat_welcome: 'Hello, Officer.',
   page_aichat_welcome_sub: 'Your multi-turn stateful intelligence analyst is initialized. I operate under the INDIGO operational protocol, providing deep, contextual answers. How can I assist your investigation today?',
   page_aichat_temp_notice: 'Persistent memory is currently in maintenance mode. This session is temporary. For critical intelligence, save your findings externally.',
@@ -736,9 +728,6 @@ const kn: TranslationSet = {
   // Navigation
   nav_dashboard: 'ಡ್ಯಾಶ್\u200Cಬೋರ್ಡ್',
   nav_command_center: 'ಆದೇಶ ಕೇಂದ್ರ',
-  nav_intelligence: 'ಗುಪ್ತಚರ',
-  nav_intelligence_engine: 'ಗುಪ್ತಚರ ಎಂಜಿನ್',
-  nav_intelligence_fusion: 'ಗುಪ್ತಚರ ವಿಲೀನ',
   nav_fir: 'ಎಫ್\u200Cಐಆರ್',
   nav_hotspot: 'ಹಾಟ್\u200Cಸ್\u200Cಪಾಟ್\u200Cಗಳು',
   nav_network: 'ಜಾಲ',
@@ -759,7 +748,6 @@ const kn: TranslationSet = {
   nav_settings: 'ಸೆಟ್\u200Cಟಿಂಗ್\u200Cಗಳು',
   nav_admin: 'ನಿರ್ವಾಹಕ',
   nav_docs: 'ದಸ್ತಾವೇಜುಗಳು',
-  nav_identity: 'ಗುರುತು',
   nav_face_recognition: 'ಮುಖ ಗುರುತಿಸುವಿಕೆ',
 
   // Common actions
@@ -1102,9 +1090,6 @@ const kn_en: TranslationSet = {
   // Navigation
   nav_dashboard: 'Dashboard',
   nav_command_center: 'Aadesha Kendra',
-  nav_intelligence: 'Guptachara',
-  nav_intelligence_engine: 'Guptachara Engine',
-  nav_intelligence_fusion: 'Guptachara Vilina',
   nav_fir: 'FIR',
   nav_hotspot: 'Hotspotgalu',
   nav_network: 'Jaala',
@@ -1125,7 +1110,6 @@ const kn_en: TranslationSet = {
   nav_settings: 'Settingsgalu',
   nav_admin: 'Nirvahaka',
   nav_docs: 'Dastavejgalu',
-  nav_identity: 'Gurutu',
   nav_face_recognition: 'Mukha Gurutisuvike',
 
   // Common actions
@@ -1297,7 +1281,7 @@ const kn_en: TranslationSet = {
   evidence_hash: 'File Hash',
 
   // Crime Cases
-  cc_title: 'Saksha Aparadha Guptachara Prakaranagalu',
+  cc_title: 'Drishyam Aparadha Guptachara Prakaranagalu',
   cc_subtitle: 'Operator System Profile Clearance Level',
   cc_create: 'Aparadha Prakarana Rachisi',
   cc_search_hint: 'Prakarana sankhye, vivaraneyinda huduki...',
@@ -1339,7 +1323,7 @@ const kn_en: TranslationSet = {
   notifications_mark_read: 'Oodalagide Endu Gurutisi',
 
   // Login
-  login_title: 'Saksha',
+  login_title: 'Drishyam',
   login_subtitle: 'Aparadha Guptachara Mattu Vishleshaneya Vedike',
   login_badge_hint: 'Sign In Madalu Nimma Badge ID Nomadisi',
   login_face_auth: 'Mukha Drudheekarana',
@@ -1454,7 +1438,7 @@ const kn_en: TranslationSet = {
   page_notif_inform_station: 'Thaane HO ge Thilisi',
 
   // AI Chat page
-  page_aichat_title: 'Saksha AI Vishleshaka',
+  page_aichat_title: 'Drishyam AI Vishleshaka',
   page_aichat_welcome: 'Namaskaara, Adhikari.',
   page_aichat_welcome_sub: 'Nimma Bahu-Suttina Sthira Guptachara Vishleshaka Arambhisalagide. Naanu INDIGO Karyacharana Protocol adiyalli Kaelasa Maaduttene, Aadvada Sandarbhatmaka Utharagalu Odegisuttene. Indu Nimma Tanikege Naanu Hege Sahaya Maadabahudu?',
   page_aichat_temp_notice: 'Sthira Smarane Prasthuta Nirvahana Kramadallide. Ee Adhiveshana Taatkalika. Nirnaayaka Guptacharake, Nimma Kanduhiddivannu Horage Uḷisi.',

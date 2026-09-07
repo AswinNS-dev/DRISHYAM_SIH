@@ -1,4 +1,4 @@
-# Drishyam - Crime Intelligence & Analytical Platform for Karnataka State Police
+# Drishyam - Crime Intelligence & Analytical Platform
 
 ## Problem Statement
 
@@ -15,9 +15,9 @@ As crime data continues to grow in volume and complexity, there is a need for an
 
 # Proposed Solution
 
-## Saksha: An Intelligent Crime Intelligence & Analytics Platform
+## Drishyam: An Intelligent Crime Intelligence & Analytics Platform
 
-Saksha is an AI-powered Crime Intelligence and Analytical Platform designed to transform traditional crime records into a comprehensive intelligence ecosystem. The platform combines geospatial analytics, criminological network analysis, machine learning, and conversational AI to help law enforcement agencies move from reactive reporting to proactive crime prevention.
+Drishyam is an AI-powered Crime Intelligence and Analytical Platform designed to transform traditional crime records into a comprehensive intelligence ecosystem. The platform combines geospatial analytics, criminological network analysis, machine learning, and conversational AI to help law enforcement agencies move from reactive reporting to proactive crime prevention.
 
 The system acts as a centralized intelligence hub that enables investigators to uncover hidden relationships, identify emerging crime patterns, predict high-risk areas, and make data-driven operational decisions.
 
@@ -340,7 +340,7 @@ Visualization & Conversational AI Platform
 
 # Conclusion
 
-Saksha transforms traditional crime records into a comprehensive intelligence platform by combining geospatial analytics, criminological network analysis, machine learning, predictive intelligence, anomaly detection, and conversational AI. The solution enables Karnataka State Police to move beyond manual reporting and fragmented records, creating a proactive, intelligence-driven policing ecosystem focused on prevention, investigation, and strategic decision-making.
+Drishyam transforms traditional crime records into a comprehensive intelligence platform by combining geospatial analytics, criminological network analysis, machine learning, predictive intelligence, anomaly detection, and conversational AI. The solution enables Karnataka State Police to move beyond manual reporting and fragmented records, creating a proactive, intelligence-driven policing ecosystem focused on prevention, investigation, and strategic decision-making.
 
 ---
 # Demo values

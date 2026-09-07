@@ -18,7 +18,7 @@ def _seed_dbs(db: Session):
     if not user:
         user = User(
             username="registry_test",
-            email="registry@saksha.local",
+            email="registry@drishyam.local",
             full_name="Registry Tester",
             hashed_password=hash_password("TestPass1!"),
             role_id=role.id,

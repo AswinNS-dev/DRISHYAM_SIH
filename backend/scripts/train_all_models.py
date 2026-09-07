@@ -1,5 +1,5 @@
 """
-Train all SAKSHA ML model artifacts in one shot.
+Train all DRISHYAM ML model artifacts in one shot.
 
 Trains:
   1. Hotspot model  — LightGBM from real DB (falls back to RandomForest on synthetic data)
@@ -91,7 +91,7 @@ def main() -> None:
     errors: list[str] = []
 
     print(SEPARATOR)
-    print("  SAKSHA — Training All ML Models")
+    print("  DRISHYAM — Training All ML Models")
     print(SEPARATOR)
 
     # 1. Hotspot

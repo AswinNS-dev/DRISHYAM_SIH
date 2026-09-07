@@ -1,4 +1,4 @@
-"""SAKSHA End-to-End Validation (Issue #253 — Final Test v2).
+"""DRISHYAM End-to-End Validation (Issue #253 — Final Test v2).
 
 Walks one realistic crime scenario through the complete intelligence lifecycle:
 

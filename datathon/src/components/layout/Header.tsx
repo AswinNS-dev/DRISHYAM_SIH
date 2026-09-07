@@ -28,8 +28,6 @@ interface HeaderProps {
 const pageLabels: Record<string, string> = {
   dashboard: 'Analytics Dashboard',
   command_center: 'Command Center',
-  intelligence: 'Investigation Hub',
-  identity: 'Identity Resolution & Data Integrity',
   fir: 'FIR Registry',
   hotspot: 'Hotspot Map',
   network: 'Network Graph',
@@ -101,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const currentPage = pageLabels[activeTab] || 'Saksha';
+  const currentPage = pageLabels[activeTab] || 'Drishyam';
 
   return (
     <header
@@ -121,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1.5 text-sm min-w-0">
-          <span className="text-[var(--text-muted)] hidden sm:inline shrink-0">Saksha</span>
+          <span className="text-[var(--text-muted)] hidden sm:inline shrink-0">Drishyam</span>
           <ChevronRight className="w-3.5 h-3.5 text-[var(--text-disabled)] hidden sm:block shrink-0" />
           <span className="text-[var(--text-primary)] font-medium truncate">{currentPage}</span>
         </div>

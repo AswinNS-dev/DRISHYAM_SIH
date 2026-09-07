@@ -122,7 +122,7 @@ class TestRecentActivity:
 _CLOCK = "### System Clock\nCurrent date and time: 2026-08-23 14:05 (Sunday)"
 
 _RECENCY = (
-    "### Saksha Analytics Engine — Recent Activity\n"
+    "### Drishyam Analytics Engine — Recent Activity\n"
     "System date/time now: 2026-08-23 14:05\n"
     "Period analyzed: today (2026-08-23)\n"
     "New crime cases registered: 0\n"
@@ -132,7 +132,7 @@ _RECENCY = (
 )
 
 _DOSSIERS = (
-    "### Saksha PostgreSQL Database — Offender Dossiers\n"
+    "### Drishyam PostgreSQL Database — Offender Dossiers\n"
     "Ramu Swamy: Status=ACTIVE, Classification=A-CATEGORY, Risk=100, "
     "Active Districts=Belagavi, Bengaluru Urban, Gang=Theft & Burglaries"
 )

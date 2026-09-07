@@ -1,8 +1,8 @@
-# Saksha -- Complete Project Context
+# Drishyam -- Complete Project Context
 
 ## Project Summary
 
-**Saksha** is a **Crime Intelligence & Analytical Platform** built for the **Karnataka State Police (KSP)** as part of **Datathon 2026 Challenge 2**. It transforms raw crime records into actionable intelligence by combining a full-stack web application with AI/ML predictive models, graph-based criminal network analysis, real-time notifications, and a MLOps pipeline. The platform is designed for 4 distinct user roles: Admin, Crime Analyst (SCRB), Investigator (IO), and Policymaker (SP).
+**Drishyam** is a **Crime Intelligence & Analytical Platform** built for the **Karnataka State Police (KSP)** as part of **Datathon 2026 Challenge 2**. It transforms raw crime records into actionable intelligence by combining a full-stack web application with AI/ML predictive models, graph-based criminal network analysis, real-time notifications, and a MLOps pipeline. The platform is designed for 4 distinct user roles: Admin, Crime Analyst (SCRB), Investigator (IO), and Policymaker (SP).
 
 **Author:** Aadhithya Balu S  
 **License:** MIT (2026)  
@@ -124,7 +124,7 @@
 ## Repository Layout
 
 ```
-Saksha_Datathon/
+Drishyam_Datathon/
 |-- backend/                    # FastAPI Python backend
 |   |-- app/
 |   |   |-- main.py            # FastAPI app entry point
@@ -542,14 +542,14 @@ All models implement a standard interface:
 
 ## CI/CD Pipelines
 
-### `ci.yml` (Saksha CI)
+### `ci.yml` (Drishyam CI)
 - **Trigger:** Push to main, all PRs
 - **Jobs:**
   1. **backend:** Python 3.12, install requirements, `pytest`, `compileall`
   2. **frontend:** Node.js 20, `npm ci`, `npm run build`
   3. **docker-config:** Validate `backend/docker-compose.yml`
 
-### `mlops.yml` (Saksha MLOps)
+### `mlops.yml` (Drishyam MLOps)
 - **Trigger:** Push to main, all PRs, weekly (Sunday 2AM UTC)
 - **Jobs:**
   1. Python 3.12, install requirements

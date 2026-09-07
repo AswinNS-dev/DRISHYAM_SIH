@@ -23,7 +23,7 @@ class DummyRole:
 class DummyUser:
     id = "00000000-0000-0000-0000-000000000001"
     username = "testuser"
-    email = "test@saksha.gov"
+    email = "test@drishyam.gov"
     role = DummyRole()
     badge_id = "TEST-0001"
 

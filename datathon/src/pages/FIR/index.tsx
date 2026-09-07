@@ -519,7 +519,7 @@ export const FIRPage: React.FC = () => {
                     {getStatusBadge(selectedFir.status)}
                   </div>
                   <p className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase break-words">
-                    SAKSHA CASE COMMAND DOSSIER INDEXID:{" "}
+                    DRISHYAM CASE COMMAND DOSSIER INDEXID:{" "}
                     {selectedFir.id.slice(0, 8)}...
                   </p>
                 </div>

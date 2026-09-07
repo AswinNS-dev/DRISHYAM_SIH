@@ -1,5 +1,5 @@
 """
-SAKSHA Backend — FastAPI application entrypoint.
+DRISHYAM Backend — FastAPI application entrypoint.
 """
 import warnings
 warnings.filterwarnings("ignore", message=".*sklearn.utils.parallel.delayed.*")
@@ -348,7 +348,7 @@ def _prewarm_models() -> None:
         except Exception as exc:
             logger.error("[prewarm] Background model prewarm thread crashed: %s", exc, exc_info=True)
 
-    threading.Thread(target=_load, name="saksha-prewarm", daemon=True).start()
+    threading.Thread(target=_load, name="drishyam-prewarm", daemon=True).start()
 
 
 def _prewarm_mo_profiles():
@@ -398,7 +398,7 @@ def _prewarm_mo_profiles():
         except Exception as exc:
             logger.warning("[prewarm] MO profile warm-up skipped: %s", exc)
 
-    threading.Thread(target=_warm, name="saksha-prewarm-mo", daemon=True).start()
+    threading.Thread(target=_warm, name="drishyam-prewarm-mo", daemon=True).start()
 
 
 _bg_refresh_stop = False
@@ -433,7 +433,7 @@ def _start_background_refresh() -> None:
                 logger.debug("[bg-refresh] error: %s", exc)
             time.sleep(300)  # 5 minutes
 
-    threading.Thread(target=_loop, name="saksha-bg-refresh", daemon=True).start()
+    threading.Thread(target=_loop, name="drishyam-bg-refresh", daemon=True).start()
 
 
 @asynccontextmanager
@@ -538,7 +538,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Core backend for the SAKSHA Crime Intelligence Platform — auth, records, and APIs for the AI/ML modules.",
+    description="Core backend for the DRISHYAM Crime Intelligence Platform — auth, records, and APIs for the AI/ML modules.",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

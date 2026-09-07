@@ -445,7 +445,7 @@ class TestAIChatOrchestratorSafety:
 
         orch = ChatOrchestrator()
         result = orch.process_message_sync(
-            message="What is Saksha?",
+            message="What is Drishyam?",
             session_id="test-platform",
             db=db_session,
             history=None,

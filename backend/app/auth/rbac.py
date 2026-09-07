@@ -9,7 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.core.exceptions import ForbiddenException
 from app.models.user import User
 
-# Canonical role set for SAKSHA
+# Canonical role set for DRISHYAM
 ROLE_ADMIN = "admin"
 ROLE_CRIME_ANALYST = "crime_analyst"
 ROLE_INVESTIGATOR = "investigator"

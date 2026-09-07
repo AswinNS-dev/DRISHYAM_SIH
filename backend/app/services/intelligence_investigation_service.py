@@ -657,7 +657,7 @@ def _why_this_insight(pattern: dict[str, Any], network: dict[str, Any]) -> dict[
     analytics = pattern.get("contributing_analytics") or {}
     methodology = {
         "ml_status": pattern.get("ml_status", "RULE_BASED"),
-        "model_name": pattern.get("model_name", "SAKSHA Intelligence Fusion"),
+        "model_name": pattern.get("model_name", "DRISHYAM Intelligence Fusion"),
         "model_version": pattern.get("model_version", "v1.0"),
         "analytics_available": {
             key: value.get("status", "UNAVAILABLE")

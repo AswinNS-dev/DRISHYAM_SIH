@@ -462,7 +462,7 @@ def maybe_refresh_async(
             threading.Thread(
                 target=_worker,
                 args=(k, reason),
-                name=f"saksha-retrain-{k}",
+                name=f"drishyam-retrain-{k}",
                 daemon=True,
             ).start()
             scheduled.append(k)

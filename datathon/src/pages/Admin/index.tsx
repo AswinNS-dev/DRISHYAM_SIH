@@ -13,10 +13,11 @@ import {
   type AuditRow,
 } from '../../components/admin';
 import { DataImportPanel } from '../../components/admin/DataImportPanel';
+import IngestionPanel from '../../components/admin/IngestionPanel';
 import DataQualityPanel from '../../components/admin/DataQualityPanel';
 import ModelHealthPanel from '../../components/admin/ModelHealthPanel';
 
-type Tab = 'users' | 'roles' | 'audit' | 'import' | 'quality' | 'settings';
+type Tab = 'users' | 'roles' | 'audit' | 'import' | 'ingestion' | 'quality' | 'settings';
 
 
 
@@ -140,7 +141,7 @@ export const Admin: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = 'saksha_audit_logs.csv';
+      anchor.download = 'drishyam_audit_logs.csv';
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -161,7 +162,7 @@ export const Admin: React.FC = () => {
       {(message || error || loading) && <div className={`rounded border px-3 py-2 text-[10px] uppercase tracking-wider ${error ? 'border-amber-500/30 text-amber-300' : 'border-[#0E9E78]/30 text-[#0E9E78]'}`}>{error ?? message ?? 'Loading admin data'}</div>}
 
       <div className="flex flex-wrap gap-2">
-        {(['users', 'roles', 'audit', 'import', 'quality', 'settings'] as Tab[]).map((item) => (
+        {(['users', 'roles', 'audit', 'import', 'ingestion', 'quality', 'settings'] as Tab[]).map((item) => (
           <button key={item} onClick={() => setTab(item)} className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${tab === item ? 'border-[#1E6FD9] bg-[#1E6FD9]/20 text-[var(--text-primary)]' : 'border-border-color bg-[var(--bg-tertiary)]/35 text-[var(--text-secondary)]'}`}>{item}</button>
         ))}
       </div>
@@ -181,6 +182,7 @@ export const Admin: React.FC = () => {
         </div>
       )}
       {tab === 'import' && <DataImportPanel />}
+      {tab === 'ingestion' && <IngestionPanel />}
       {tab === 'quality' && (
         <div className="space-y-6">
           <DataQualityPanel />

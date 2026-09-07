@@ -73,7 +73,7 @@ LIFECYCLE_STATUSES = {
     REPORT_STATUS_FAILED,
 }
 
-# Report types actually supported by SAKSHA (§3).
+# Report types actually supported by DRISHYAM (§3).
 REPORT_TYPE_CASES = "cases"
 REPORT_TYPE_OFFICERS = "officers"
 REPORT_TYPE_CRIMINALS = "criminals"

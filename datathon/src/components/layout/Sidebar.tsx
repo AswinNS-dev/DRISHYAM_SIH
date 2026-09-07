@@ -28,9 +28,7 @@ import {
   Crosshair,
   FileWarning,
   ShieldCheck,
-  Sparkles,
   ScanFace,
-  Radar,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -73,7 +71,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'notifications', label: t.nav_notifications, path: '/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
         { id: 'anomaly', label: t.nav_anomaly, path: '/anomalies', icon: <AlertTriangle className="w-[18px] h-[18px]" /> },
         { id: 'strategic', label: t.nav_strategic, path: '/strategic', icon: <Shield className="w-[18px] h-[18px]" /> },
-        { id: 'intelligence_fusion', label: t.nav_intelligence_fusion, path: '/intelligence-fusion', icon: <Radar className="w-[18px] h-[18px]" /> },
       ],
     },
 {
@@ -83,7 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'investigation', label: t.nav_investigation, path: '/investigation', icon: <Crosshair className="w-[18px] h-[18px]" /> },
           { id: 'fir', label: t.nav_fir, path: '/firs', icon: <FileWarning className="w-[18px] h-[18px]" /> },
           { id: 'evidence', label: t.nav_evidence, path: '/evidence', icon: <ShieldCheck className="w-[18px] h-[18px]" /> },
-          { id: 'investigation_intelligence', label: t.nav_intelligence_engine, path: '/intelligence-engine', icon: <Sparkles className="w-[18px] h-[18px]" /> },
         ],
       },
     {
@@ -94,7 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'predictive', label: t.nav_predictive, path: '/predictions', icon: <Brain className="w-[18px] h-[18px]" /> },
         { id: 'sociological', label: t.nav_sociological, path: '/sociological', icon: <Globe2 className="w-[18px] h-[18px]" /> },
         { id: 'reports', label: t.nav_reports, path: '/reports', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
-        { id: 'identity', label: t.nav_identity, path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
       ],
     },
     {
@@ -165,12 +160,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`h-16 flex items-center border-b border-[var(--border-primary)] shrink-0 ${collapsed ? 'justify-center px-2' : 'px-5 justify-between'}`}>
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-[var(--accent-blue-subtle)] border border-[var(--accent-blue)]/20 flex items-center justify-center shrink-0 overflow-hidden">
-              <img src="/logo.svg" alt="Saksha" className="w-6 h-6" />
+              <img src="/logo.svg" alt="Drishyam" className="w-6 h-6" />
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold tracking-wide text-[var(--text-primary)] uppercase">Saksha</span>
-                <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase tracking-wider">KSP Intel Platform</span>
+                <span className="text-sm font-bold tracking-wide text-[var(--text-primary)] uppercase">Drishyam</span>
+                <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase tracking-wider">Criminal Network Intelligence</span>
               </div>
             )}
           </div>

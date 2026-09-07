@@ -24,7 +24,7 @@ from app.models.chat import ChatConversation, ChatMessage
 from app.models.user import User
 from app.schemas.chat_history import ConversationCreate, ConversationUpdate
 
-logger = logging.getLogger("saksha")
+logger = logging.getLogger("drishyam")
 
 DEFAULT_TITLE = "New Chat"
 MAX_TITLE_LENGTH = 200

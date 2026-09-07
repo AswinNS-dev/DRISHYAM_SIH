@@ -87,7 +87,7 @@ export const Reports: React.FC = () => {
       const blob = await response.blob();
       const disposition = response.headers.get('Content-Disposition') ?? '';
       const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? `saksha_${filters.reportType}_report.${format}`;
+      const filename = match?.[1] ?? `drishyam_${filters.reportType}_report.${format}`;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;

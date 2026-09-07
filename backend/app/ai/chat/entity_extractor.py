@@ -127,7 +127,7 @@ class EntityExtractor:
     """Extracts structured entities from natural language crime queries."""
 
     _CASE_RE = re.compile(r"CR-\d{4}-[A-Z]{2,4}-\d+", re.I)
-    # FIR identifiers come in several real formats in the Saksha database:
+    # FIR identifiers come in several real formats in the Drishyam database:
     #   FIR-045/BNG/2026    FIR-411/RANEBENNUR/2026   FIR-NXT-001/2026
     #   FIR 204/BLG/2026    FIR-789/MYS/2026         FIR 2026/104 (year/ordinal)
     _FIR_RE = re.compile(

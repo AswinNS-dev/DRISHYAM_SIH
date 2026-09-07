@@ -1,4 +1,4 @@
-"""Vector store utilities for Saksha AI assistants."""
+"""Vector store utilities for Drishyam AI assistants."""
 
 from .memory import InMemoryVectorStore, VectorDocument, VectorHit
 

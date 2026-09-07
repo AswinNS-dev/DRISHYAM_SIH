@@ -190,7 +190,7 @@ def retrain_model(
         target=_run_domain_retrain_job,
         args=(domain, str(job.id), str(current_user.id), job.reason),
         daemon=True,
-        name=f"saksha-retrain-{domain}-{job.id}",
+        name=f"drishyam-retrain-{domain}-{job.id}",
     ).start()
 
     return RetrainResponse(

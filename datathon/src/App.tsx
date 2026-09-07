@@ -25,8 +25,6 @@ import Victims from './pages/Victims';
 import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
-import InvestigationIntelligence from './pages/InvestigationIntelligence';
-import IntelligenceFusion from './pages/IntelligenceFusion';
 import NotificationsPage from './pages/Notifications';
 import SociologicalPage from './pages/Sociological';
 import StrategicPage from './pages/Strategic';
@@ -34,16 +32,12 @@ import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 import DocsPage from './pages/Docs';
 import SettingsHelp from './pages/SettingsHelp';
 import Admin from './pages/Admin';
-import IdentityResolution from './pages/IdentityResolution';
 import FaceRecognition from './pages/FaceRecognition';
 import NotFound from './pages/NotFound';
 
 const routeEntries = [
   ['dashboard', '/dashboard'],
   ['command_center', '/command-center'],
-  ['investigation_intelligence', '/intelligence-engine'],
-  ['intelligence_fusion', '/intelligence-fusion'],
-  ['identity', '/identity-resolution'],
   ['fir', '/firs'],
   ['hotspot', '/hotspots'],
   ['network', '/network'],
@@ -165,9 +159,6 @@ function App() {
     const tabLabels: Record<string, string> = {
       dashboard: 'Analytics Dashboard',
       command_center: 'Command Center',
-      investigation_intelligence: 'Intelligence Engine',
-      intelligence_fusion: 'Intelligence Fusion Portal',
-      identity: 'Identity Resolution & Data Integrity',
       fir: 'FIR Registry',
       hotspot: 'Hotspot Map',
       network: 'Network Graph',
@@ -208,7 +199,7 @@ function App() {
               </svg>
             </div>
             <div className="text-left">
-              <p className="text-lg font-bold tracking-wide text-[var(--text-primary)] leading-none">SAKSHA</p>
+              <p className="text-lg font-bold tracking-wide text-[var(--text-primary)] leading-none">DRISHYAM</p>
               <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-[var(--text-muted)] mt-1">
                 Karnataka State Police
               </p>
@@ -262,9 +253,6 @@ function App() {
     switch (routeTab || activeTab) {
       case 'dashboard': return <RoleGuard path="/dashboard"><Overview /></RoleGuard>;
       case 'command_center': return <RoleGuard path="/command-center"><CommandCenter /></RoleGuard>;
-      case 'investigation_intelligence': return <RoleGuard path="/intelligence-engine"><InvestigationIntelligence /></RoleGuard>;
-      case 'intelligence_fusion': return <RoleGuard path="/intelligence-fusion"><IntelligenceFusion /></RoleGuard>;
-      case 'identity': return <RoleGuard path="/identity-resolution"><IdentityResolution /></RoleGuard>;
       case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
       case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
       case 'network': return <RoleGuard path="/network"><Network /></RoleGuard>;
@@ -315,7 +303,7 @@ function App() {
 
         {/* Footer */}
         <footer className="h-9 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 pl-6 pr-6 pb-[env(safe-area-inset-bottom)] mb-[64px] md:mb-0 flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] select-none shrink-0 no-print">
-          <span>SAKSHA v2.0 &middot; Karnataka State Police</span>
+          <span>DRISHYAM v2.0 &middot; Karnataka State Police</span>
           <span className="hidden sm:inline">CLASSIFIED &middot; STAMP: 2026-SCRB-KSP</span>
         </footer>
       </div>

@@ -200,6 +200,8 @@ class CentralityMetric(BaseModel):
     category: str
     degree_centrality: float
     betweenness_score: float
+    closeness_centrality: float = 0.0
+    pagerank_score: float = 0.0
     is_bridge_node: bool
     riskScore: float
 
@@ -227,3 +229,50 @@ class AIGraphInsight(BaseModel):
     target_node_ids: list[str]
     recommendation: str
     timestamp: str
+
+
+# ── SIH26189: hidden (multi-hop) network discovery ──────────────────────────
+
+class HiddenConnectionHop(BaseModel):
+    from_id: str = Field(alias="from")
+    to_id: str = Field(alias="to")
+    from_name: str
+    to_name: str
+    relationship: str
+    fir_numbers: list[str] = Field(default_factory=list)
+    shared_record_count: int = 0
+
+    model_config = {"populate_by_name": True}
+
+
+class HiddenConnectionEntity(BaseModel):
+    id: str
+    name: str
+    category: str
+    riskScore: float = 0.0
+
+
+class HiddenConnection(BaseModel):
+    """An INDIRECT connection discovered via multi-hop traversal.
+
+    These are potential network connections, never confirmed criminal
+    relationships — the UI must render the ``label`` and
+    ``connection_status`` verbatim so investigators are never misled.
+    """
+    source: HiddenConnectionEntity
+    target: HiddenConnectionEntity
+    hops: int
+    intermediates: list[HiddenConnectionEntity] = Field(default_factory=list)
+    chain: list[str] = Field(default_factory=list)
+    label: str  # e.g. "2-hop indirect connection"
+    connection_status: str = "POTENTIAL"
+    strength: float = 0.0
+    supporting_firs: list[str] = Field(default_factory=list)
+    hop_evidence: list[HiddenConnectionHop] = Field(default_factory=list)
+    explanation: str = ""
+
+
+class HiddenNetworkResponse(BaseModel):
+    found: int
+    connections: list[HiddenConnection] = Field(default_factory=list)
+    explanation: str = ""

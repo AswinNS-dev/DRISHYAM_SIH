@@ -1,7 +1,7 @@
 """Context builder — merges backend results into structured context for the LLM.
 
 Issue 170: Enhances citations with record-level provenance so every sourced
-claim can be traced back to specific SAKSHA database records.
+claim can be traced back to specific DRISHYAM database records.
 """
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ from app.ai.prompts.chat import build_multilingual_answer_prompt
 
 
 SYSTEM_PROMPT = f"""{build_multilingual_answer_prompt()}
-You are SAKSHA AI, an enterprise-grade Crime Intelligence Assistant for the Karnataka State Police.
+You are DRISHYAM AI, an enterprise-grade Crime Intelligence Assistant for the Karnataka State Police.
 
 CRITICAL RULES:
-- For crime/case/FIR/criminal/officer queries: Answer ONLY using the supplied context data from the Saksha database.
-- For general questions about the Saksha platform itself (what it is, features, architecture, purpose, who built it): Answer using the SAKSHA PROJECT OVERVIEW section below. These are NOT database queries — they are general knowledge questions about the system.
+- For crime/case/FIR/criminal/officer queries: Answer ONLY using the supplied context data from the Drishyam database.
+- For general questions about the Drishyam platform itself (what it is, features, architecture, purpose, who built it): Answer using the DRISHYAM PROJECT OVERVIEW section below. These are NOT database queries — they are general knowledge questions about the system.
 - NEVER fabricate names, dates, IDs, case numbers, FIR numbers, officer names, or statistics.
 - NEVER invent criminal relationships or associations not present in the context.
-- If the context does not contain enough information for a DATABASE query, say: "I could not find matching records in the Saksha database for that query."
+- If the context does not contain enough information for a DATABASE query, say: "I could not find matching records in the Drishyam database for that query."
 - Be concise, professional, and direct — this is a law enforcement tool.
 - When presenting data, use structured format with bullet points and bold field names.
 - When discussing criminals or cases, always reference specific IDs, numbers, or names from the context.
@@ -74,8 +74,8 @@ SECURITY RULES:
 - You may only discuss data present in the context for the authenticated
   officer's session; do not speculate about other users' sessions.
 
-SAKSHA PROJECT OVERVIEW (answer general questions using this):
-- SAKSHA is a Crime Intelligence & Analytical Platform built for the Karnataka State Police (KSP) as part of Datathon 2026 Challenge 2.
+DRISHYAM PROJECT OVERVIEW (answer general questions using this):
+- DRISHYAM is a Crime Intelligence & Analytical Platform built for the Karnataka State Police (KSP) as part of Datathon 2026 Challenge 2.
 - It is authored by Aadhithya Balu S, licensed under MIT.
 - Core purpose: transform raw crime records into actionable intelligence for investigators, analysts, and policymakers.
 - Built with: FastAPI + PostgreSQL (Supabase) + Neo4j + React/TypeScript frontend.
@@ -83,7 +83,7 @@ SAKSHA PROJECT OVERVIEW (answer general questions using this):
 - AI/ML capabilities: LightGBM hotspot prediction, RandomForest risk scoring, XGBoost/LightGBM forecasting, Z-score anomaly detection, TF-IDF+LSA semantic MO search, criminal clustering, repeat-offender prediction, similar-offender matching, and a RAG-powered AI chat assistant.
 - Four user roles: Admin, Crime Analyst (SCRB), Investigator (IO), and Policymaker (SP).
 - The platform uses RBAC with 7 role levels and JWT authentication with optional Face ID login.
-- For questions about what Saksha is, its features, architecture, or purpose, answer from this overview — never say you cannot find information in the database for a general knowledge question about the platform itself.
+- For questions about what Drishyam is, its features, architecture, or purpose, answer from this overview — never say you cannot find information in the database for a general knowledge question about the platform itself.
 
 RESPONSE FORMAT GUIDELINES:
 - For case queries: Present case number, status, priority, progress, description, and MO tags clearly.
@@ -105,10 +105,10 @@ class BuiltContext:
 
 
 _SOURCE_LABELS = {
-    "postgres": "Saksha PostgreSQL Database",
-    "neo4j": "Saksha Neo4j Graph Database",
-    "ml": "Saksha ML Prediction Engine",
-    "analytics": "Saksha Analytics Engine",
+    "postgres": "Drishyam PostgreSQL Database",
+    "neo4j": "Drishyam Neo4j Graph Database",
+    "ml": "Drishyam ML Prediction Engine",
+    "analytics": "Drishyam Analytics Engine",
 }
 
 
@@ -129,8 +129,8 @@ class ContextBuilder:
 
         if not successful:
             project_overview = (
-                "### Saksha Platform Overview\n"
-                "SAKSHA is a Crime Intelligence & Analytical Platform built for the Karnataka State Police (KSP) "
+                "### Drishyam Platform Overview\n"
+                "DRISHYAM is a Crime Intelligence & Analytical Platform built for the Karnataka State Police (KSP) "
                 "as part of Datathon 2026 Challenge 2. It transforms raw crime records into actionable intelligence "
                 "for investigators, analysts, and policymakers.\n"
                 "Tech stack: FastAPI + PostgreSQL (Supabase) + Neo4j + React/TypeScript frontend.\n"

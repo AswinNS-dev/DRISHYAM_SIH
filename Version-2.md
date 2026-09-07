@@ -1,4 +1,4 @@
-# SAKSHA DATATHON COMPLIANCE & ENHANCEMENT AUDIT — VERSION 2.1
+# DRISHYAM DATATHON COMPLIANCE & ENHANCEMENT AUDIT — VERSION 2.1
 
 **Audit Date:** 2026-07-24 (Updated 2026-07-25)
 **Auditor:** Automated Codebase Analysis
@@ -507,4 +507,4 @@ npm run dev:all
 
 ---
 
-*Report generated on 2026-07-24, updated 2026-07-25 for Saksha Datathon Challenge 2 — Karnataka State Police*
+*Report generated on 2026-07-24, updated 2026-07-25 for Drishyam Datathon Challenge 2 — Karnataka State Police*

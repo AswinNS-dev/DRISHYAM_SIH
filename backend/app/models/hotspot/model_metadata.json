@@ -1,5 +1,5 @@
 {
-    "model_name": "SAKSHA Hotspot Predictor",
+    "model_name": "DRISHYAM Hotspot Predictor",
     "algorithm": "LightGBM",
     "version": "20260903_144227",
     "h3_resolution": 7,

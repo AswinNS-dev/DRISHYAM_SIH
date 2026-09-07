@@ -241,7 +241,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
       <div className="p-6 bg-secondary-bg border border-border-color rounded-card shadow-glow-blue/5">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <span className="text-[10px] text-[#0E9E78] font-bold tracking-[0.15em] uppercase">SAKSHA CRIME INCIDENT RECORDS</span>
+            <span className="text-[10px] text-[#0E9E78] font-bold tracking-[0.15em] uppercase">DRISHYAM CRIME INCIDENT RECORDS</span>
             <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)] uppercase tracking-wider mt-1">{caseData.case_number}</h1>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -428,7 +428,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
             </div>
 
             <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3">
-              <Sparkles className="w-4 h-4 text-[#1E6FD9] animate-pulse" /> SAKSHA AI Predictive Assistance
+              <Sparkles className="w-4 h-4 text-[#1E6FD9] animate-pulse" /> DRISHYAM AI Predictive Assistance
             </h3>
 
             {/* Displaying mock AI details */}

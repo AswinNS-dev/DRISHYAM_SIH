@@ -25,7 +25,7 @@ from app.models.user import User
 from app.schemas.chat_history import ConversationCreate
 from app.services.chat import history_service
 
-logger = logging.getLogger("saksha")
+logger = logging.getLogger("drishyam")
 
 router = APIRouter(prefix="/ai/chat", tags=["AI Chat"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 

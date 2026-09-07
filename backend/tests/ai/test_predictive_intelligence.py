@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for SAKSHA Predictive Intelligence (Issue #158).
+Comprehensive test suite for DRISHYAM Predictive Intelligence (Issue #158).
 
 Validates:
 1. Feature extraction and temporal integrity (no future data leakage).

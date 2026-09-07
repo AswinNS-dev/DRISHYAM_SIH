@@ -23,14 +23,14 @@ from typing import Any
 from app.ai.chat.backend_fetcher import BackendResult
 
 _NO_EVIDENCE_RESPONSE = (
-    "I could not find matching records in the Saksha database for that query. "
+    "I could not find matching records in the Drishyam database for that query. "
     "No verified data sources were available to ground an answer, so I will not "
     "speculate. Please try rephrasing your question or check the case/FIR number."
 )
 
 _UNVERIFIED_DISCLAIMER = (
     "\n\n> Note: Some identifiers in this response could not be verified "
-    "against current Saksha database records."
+    "against current Drishyam database records."
 )
 
 _UNSOURCED_NAMES_DISCLAIMER = (

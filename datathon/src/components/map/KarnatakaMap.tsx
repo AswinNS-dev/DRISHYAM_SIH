@@ -1471,7 +1471,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                       No backend intelligence for {selectedDistrict}
                     </p>
                     <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1">
-                      The Saksha database currently holds no crime records, stations or analytics for this district. Nothing is fabricated to fill this panel.
+                      The Drishyam database currently holds no crime records, stations or analytics for this district. Nothing is fabricated to fill this panel.
                     </p>
                   </div>
                   <button

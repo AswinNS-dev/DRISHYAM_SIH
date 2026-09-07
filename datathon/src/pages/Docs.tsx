@@ -101,7 +101,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-4">
         <p className="text-sm text-[var(--text-secondary)]">
-          Saksha is engineered as a modern, full-stack intelligence platform designed to be maintainable,
+          Drishyam is engineered as a modern, full-stack intelligence platform designed to be maintainable,
           scalable and audit-safe for law enforcement.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -133,7 +133,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-4">
         <p className="text-sm text-[var(--text-secondary)]">
-          Saksha stores operational records relationally and graph relationships in Neo4j. The two are kept in
+          Drishyam stores operational records relationally and graph relationships in Neo4j. The two are kept in
           sync so both structured queries and graph traversals stay fast.
         </p>
         <h4 className="text-sm font-semibold text-[var(--text-primary)]">Core entities</h4>
@@ -215,14 +215,14 @@ const sections: DocSection[] = [
     ),
   },
   {
-    id: 'what-is-saksha',
-    title: 'What is Saksha?',
+    id: 'what-is-drishyam',
+    title: 'What is Drishyam?',
     icon: <Shield className="w-4 h-4" />,
     category: 'Getting Started',
     content: (
       <div className="space-y-4">
         <p className="text-[var(--text-secondary)] leading-relaxed">
-          <strong className="text-[var(--text-primary)]">Saksha</strong> is a comprehensive Crime Intelligence & Analytical Platform developed for the <strong className="text-[var(--text-primary)]">Karnataka State Police (KSP)</strong> as part of Datathon 2026. It transforms raw crime records into actionable intelligence through AI/ML-powered analytics, graph-based criminal network analysis, and real-time notifications.
+          <strong className="text-[var(--text-primary)]">Drishyam</strong> is a comprehensive Crime Intelligence & Analytical Platform developed for the <strong className="text-[var(--text-primary)]">Karnataka State Police (KSP)</strong> as part of Datathon 2026. It transforms raw crime records into actionable intelligence through AI/ML-powered analytics, graph-based criminal network analysis, and real-time notifications.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           {[
@@ -271,7 +271,7 @@ const sections: DocSection[] = [
     category: 'Getting Started',
     content: (
       <div className="space-y-4">
-        <p className="text-sm text-[var(--text-secondary)]">Saksha supports 7 distinct user roles with different access levels:</p>
+        <p className="text-sm text-[var(--text-secondary)]">Drishyam supports 7 distinct user roles with different access levels:</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -309,7 +309,7 @@ const sections: DocSection[] = [
     category: 'Platform Overview',
     content: (
       <div className="space-y-4">
-        <p className="text-sm text-[var(--text-secondary)]">Saksha is built on a modern full-stack architecture:</p>
+        <p className="text-sm text-[var(--text-secondary)]">Drishyam is built on a modern full-stack architecture:</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { label: 'Frontend', tech: 'React 18 + TypeScript + Vite', desc: 'Single-page application with responsive design' },
@@ -336,7 +336,7 @@ const sections: DocSection[] = [
     category: 'Platform Overview',
     content: (
       <div className="space-y-4">
-        <p className="text-sm text-[var(--text-secondary)]">Saksha integrates 8 distinct AI/ML algorithms:</p>
+        <p className="text-sm text-[var(--text-secondary)]">Drishyam integrates 8 distinct AI/ML algorithms:</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { name: 'Crime Hotspot Prediction', algo: 'LightGBM + Optuna', desc: 'Predicts future crime hotspots using spatial and temporal features' },
@@ -767,7 +767,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-4">
         <p className="text-sm text-[var(--text-secondary)]">
-          Saksha treats data protection and accountability as first-class requirements, designed for government
+          Drishyam treats data protection and accountability as first-class requirements, designed for government
           intelligence workloads.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -833,8 +833,8 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-4">
         {[
-          { q: 'How do I log in to Saksha?', a: 'Use your Badge ID and PIN on the login page. Contact your administrator if you need credentials. You can also use Face ID authentication for quick access.' },
-          { q: 'What browsers are supported?', a: 'Saksha supports Chrome, Firefox, Safari, and Edge (latest versions). For the best experience, use Chrome or Firefox.' },
+          { q: 'How do I log in to Drishyam?', a: 'Use your Badge ID and PIN on the login page. Contact your administrator if you need credentials. You can also use Face ID authentication for quick access.' },
+          { q: 'What browsers are supported?', a: 'Drishyam supports Chrome, Firefox, Safari, and Edge (latest versions). For the best experience, use Chrome or Firefox.' },
           { q: 'How often is the data updated?', a: 'Crime data is synced in real-time from the PostgreSQL database. AI models are retrained weekly via the MLOps pipeline.' },
           { q: 'Can I export data?', a: 'Yes, most modules support CSV and PDF exports. Go to Reports Center for comprehensive report generation.' },
           { q: 'Is my data secure?', a: 'Yes. All data is encrypted in transit (HTTPS) and at rest. Authentication uses JWT tokens with role-based access control. The platform follows government security standards.' },
@@ -860,7 +860,7 @@ const categories = ['Getting Started', 'Platform Overview', 'Module Guides', 'FA
 
 export const DocsPage: React.FC = () => {
   const [search, setSearch] = useState('');
-  const [activeSection, setActiveSection] = useState('what-is-saksha');
+  const [activeSection, setActiveSection] = useState('what-is-drishyam');
 
   const filtered = search
     ? sections.filter(
@@ -882,7 +882,7 @@ export const DocsPage: React.FC = () => {
               <BookOpen className="w-5 h-5 text-[var(--accent-blue)]" />
               Documentation
             </h1>
-            <p className="text-sm text-[var(--text-muted)] mt-1">Learn how to use the Saksha platform</p>
+            <p className="text-sm text-[var(--text-muted)] mt-1">Learn how to use the Drishyam platform</p>
           </div>
 
           <SearchInput

@@ -1,4 +1,4 @@
-"""Tests for legacy data ingestion routes (issue #139 M1/M2)."""
+﻿"""Tests for legacy data ingestion routes (issue #139 M1/M2)."""
 import io
 
 import pytest
@@ -15,16 +15,16 @@ IMPORTS = "/api/v2/data-import"
 
 
 @pytest.fixture
-def analyst_client(client, db_session):
-    role = db_session.query(Role).filter_by(name="crime_analyst").first()
+def admin_client(client, db_session):
+    role = db_session.query(Role).filter_by(name="admin").first()
     if role is None:
-        role = Role(name="crime_analyst", description="Crime Analyst")
+        role = Role(name="admin", description="Administrator")
         db_session.add(role)
         db_session.flush()
     user = User(
-        username="import-analyst",
-        email="import-analyst@example.com",
-        full_name="Import Analyst",
+        username="import-admin",
+        email="import-admin@example.com",
+        full_name="Import Admin",
         hashed_password=hash_password("Password123!"),
         role_id=role.id,
         is_active=True,
@@ -56,8 +56,8 @@ VALID_VICTIMS_CSV = _csv_bytes([
 ])
 
 
-def test_list_entities(analyst_client):
-    c, _ = analyst_client
+def test_list_entities(admin_client):
+    c, _ = admin_client
     r = c.get(f"{IMPORTS}/entities")
     assert r.status_code == 200, r.text
     body = r.json()
@@ -68,8 +68,8 @@ def test_list_entities(analyst_client):
 
 
 @pytest.mark.parametrize("export_format", ["csv", "xlsx"])
-def test_template_download(analyst_client, export_format):
-    c, _ = analyst_client
+def test_template_download(admin_client, export_format):
+    c, _ = admin_client
     r = c.get(f"{IMPORTS}/template/victims?export_format={export_format}")
     assert r.status_code == 200, r.text
     assert len(r.content) > 50
@@ -77,9 +77,9 @@ def test_template_download(analyst_client, export_format):
         assert r.headers["content-type"].startswith("application/vnd.openxmlformats")
 
 
-def test_preview_validates_rows(analyst_client):
+def test_preview_validates_rows(admin_client):
     """Preview must catch missing required fields and bad types without writing anything."""
-    c, _ = analyst_client
+    c, _ = admin_client
     csv_file = _csv_bytes([
         "full_name,age",
         "Broken Row,not_a_number",
@@ -99,8 +99,8 @@ def test_preview_validates_rows(analyst_client):
     assert any("integer" in err for err in all_errors)
 
 
-def test_preview_auto_maps_headers(analyst_client):
-    c, _ = analyst_client
+def test_preview_auto_maps_headers(admin_client):
+    c, _ = admin_client
     csv_file = _csv_bytes([
         "Full Name,Age",
         "Some Person,44",
@@ -116,8 +116,8 @@ def test_preview_auto_maps_headers(analyst_client):
     assert body["unmapped_headers"] == []
 
 
-def test_commit_imports_victims(analyst_client):
-    c, _ = analyst_client
+def test_commit_imports_victims(admin_client):
+    c, _ = admin_client
     r = c.post(
         f"{IMPORTS}/commit",
         files={"file": ("victims.csv", VALID_VICTIMS_CSV, "text/csv")},
@@ -134,8 +134,8 @@ def test_commit_imports_victims(analyst_client):
     assert jobs["total"] >= 1
 
 
-def test_commit_crime_cases_with_relations(analyst_client, seed_reference):
-    c, _ = analyst_client
+def test_commit_crime_cases_with_relations(admin_client, seed_reference):
+    c, _ = admin_client
     csv_file = _csv_bytes([
         "case_number,category_name,district,station,occurred_at,status,priority",
         "CR-TEST-9001,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-14 22:30,open,high",
@@ -156,9 +156,9 @@ def test_commit_crime_cases_with_relations(analyst_client, seed_reference):
     assert any("category_name" in err for err in errors)
 
 
-def test_cctns_profile_maps_headers(analyst_client, seed_reference):
-    """M2: CCTNS extract headers map onto Saksha columns automatically."""
-    c, _ = analyst_client
+def test_cctns_profile_maps_headers(admin_client, seed_reference):
+    """M2: CCTNS extract headers map onto Drishyam columns automatically."""
+    c, _ = admin_client
     csv_file = _csv_bytes([
         "REGISTRATION_NO,CRIME_HEAD,DISTRICT_NAME,POLICE_STATION,DATE_OF_REGISTRATION,FIR_STATUS",
         "CR-CCTNS-0001,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-06-10,Open",
@@ -181,7 +181,7 @@ def test_cctns_profile_maps_headers(analyst_client, seed_reference):
     assert commit["imported_rows"] == 1
 
 
-def test_xlsx_upload_roundtrip(analyst_client):
+def test_xlsx_upload_roundtrip(admin_client):
     """M1: native .xlsx ingestion works end to end."""
     workbook = Workbook()
     sheet = workbook.active
@@ -191,7 +191,7 @@ def test_xlsx_upload_roundtrip(analyst_client):
     buffer = io.BytesIO()
     workbook.save(buffer)
 
-    c, _ = analyst_client
+    c, _ = admin_client
     r = c.post(
         f"{IMPORTS}/commit",
         files={"file": ("victims.xlsx", buffer.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
@@ -203,12 +203,56 @@ def test_xlsx_upload_roundtrip(analyst_client):
     assert job_detail["source_format"] == "xlsx"
 
 
-def test_reports_xlsx_export(analyst_client):
+def test_reports_xlsx_export(admin_client):
     """M1: reports gain the previously-unimplemented xlsx export."""
-    c, _ = analyst_client
+    c, _ = admin_client
     r = c.get("/api/v2/reports/criminals/export/xlsx")
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     from openpyxl import load_workbook
     loaded = load_workbook(io.BytesIO(r.content))
     assert loaded.active.title == "Report"
+
+
+
+def _make_role_user(client, db_session, role_name: str, username: str):
+    from app.models.role import Role
+    role = db_session.query(Role).filter_by(name=role_name).first()
+    if role is None:
+        role = Role(name=role_name, description=f"{role_name} role")
+        db_session.add(role)
+        db_session.flush()
+    user = User(
+        username=username,
+        email=f"{username}@example.com",
+        full_name=username.title(),
+        hashed_password=hash_password("Password123!"),
+        role_id=role.id,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    client.app.dependency_overrides[get_current_user] = lambda: user
+    return user
+
+
+@pytest.mark.parametrize("role_name,username", [
+    ("crime_analyst", "no-ingest-analyst"),
+    ("investigator", "no-ingest-io"),
+    ("viewer", "no-ingest-viewer"),
+    ("policymaker", "no-ingest-sp"),
+])
+def test_ingestion_is_admin_only(client, db_session, role_name, username):
+    """SIH26189: only ADMIN may access ingestion; every other role is denied."""
+    _make_role_user(client, db_session, role_name, username)
+    for method, url in [
+        ("get", f"{IMPORTS}/entities"),
+        ("get", f"{IMPORTS}/jobs"),
+        ("post", f"{IMPORTS}/preview"),
+        ("post", f"{IMPORTS}/commit"),
+    ]:
+        if method == "get":
+            r = client.get(url)
+        else:
+            r = client.post(url)
+        assert r.status_code == 403, f"{role_name} -> {url}: {r.status_code} {r.text}"

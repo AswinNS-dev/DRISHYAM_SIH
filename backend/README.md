@@ -1,6 +1,6 @@
-# SAKSHA Backend
+# DRISHYAM Backend
 
-Core backend for the SAKSHA Crime Intelligence Platform — FastAPI + PostgreSQL + Neo4j, with JWT auth, RBAC, full CRUD, and the API contracts the AI/ML and frontend teams build against.
+Core backend for the DRISHYAM Crime Intelligence Platform — FastAPI + PostgreSQL + Neo4j, with JWT auth, RBAC, full CRUD, and the API contracts the AI/ML and frontend teams build against.
 
 **Status:** scaffolded, tested, and verified importable. 59 routes registered across 41 unique paths, all confirmed via `pytest` (5/5 passing) and OpenAPI schema generation.
 
@@ -40,7 +40,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env if needed; the local defaults assume PostgreSQL password `saksha_user` and Neo4j password `neo4j`
+# edit .env if needed; the local defaults assume PostgreSQL password `drishyam_user` and Neo4j password `neo4j`
 
 # create tables
 python -m app.database.init_db

@@ -150,7 +150,7 @@ def active_status() -> dict[str, Any]:
     versions = load_versions()
     latest = versions[-1] if versions else {}
     return {
-        "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),
+        "model_name": meta.get("model_name", "DRISHYAM Hotspot Predictor"),
         "model_version": meta.get("version"),
         "algorithm": meta.get("algorithm", "LightGBM"),
         "trained_at": meta.get("trained_on"),

@@ -31,7 +31,7 @@ const InvestigationDashboard: React.FC<Props> = ({ data }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <span className="text-[10px] text-[var(--accent-teal)] font-bold tracking-[0.15em] uppercase">
-            SAKSHA INVESTIGATION DASHBOARD
+            DRISHYAM INVESTIGATION DASHBOARD
           </span>
           <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)] uppercase tracking-wider mt-1">
             {data.case_number}

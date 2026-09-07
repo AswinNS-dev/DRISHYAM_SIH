@@ -1,4 +1,4 @@
-# SAKSHA — Working Knowledge (AGENTS)
+# DRISHYAM — Working Knowledge (AGENTS)
 
 Full product/architecture context lives in `CONTEXT.md` (read it first). This
 file records conventions, commands, and known constraints that agents must

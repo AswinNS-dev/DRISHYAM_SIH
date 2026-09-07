@@ -50,21 +50,18 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/officers':       { allowedRoles: OFFICER_READ_ROLES, moduleName: 'Officer Management' },
   '/evidence':       { allowedRoles: ['ADMIN', 'IO', 'INSPECTOR', 'FORENSIC', 'SCRB'], moduleName: 'Evidence Handling' },
   '/face-recognition': { allowedRoles: FACE_OPS_ROLES, moduleName: 'Face Identification' },
-  '/identity-resolution': { allowedRoles: INVESTIGATION_ROLES, moduleName: 'Identity Resolution & Data Integrity' },
   '/crime-cases':    { allowedRoles: INVESTIGATION_ROLES, moduleName: 'Crime Case Management' },
   '/investigation':  { allowedRoles: INVESTIGATION_ROLES, moduleName: 'Investigation Workspace' },
   '/firs':           { allowedRoles: INVESTIGATION_ROLES, moduleName: 'FIR Lifecycle Management' },
   '/criminals':      { allowedRoles: INVESTIGATION_ROLES, moduleName: 'Criminal Registry' },
-  '/intelligence-engine': { allowedRoles: ['ADMIN', 'SCRB', 'IO', 'INSPECTOR', 'SP'], moduleName: 'Intelligence Engine' },
-  '/intelligence-fusion': { allowedRoles: INSIGHT_ROLES, moduleName: 'Intelligence Fusion Portal' },
 };
 
 // Every page path rendered by App.tsx MUST have an explicit rule above. The
 // default in checkPermission is DENY-if-unknown so a forgotten route surface
 // never silently opens to every role.
 const EXPLICIT_REQUIRED_PATHS = [
-  '/dashboard', '/command-center', '/intelligence-engine', '/intelligence-fusion',
-  '/identity-resolution', '/firs', '/hotspots', '/network', '/predictions',
+  '/dashboard', '/command-center',
+  '/firs', '/hotspots', '/network', '/predictions',
   '/anomalies', '/offenders', '/criminals', '/victims', '/reports', '/settings',
   '/admin', '/crime-cases', '/investigation', '/ai-chat', '/face-recognition',
   '/officers', '/evidence', '/notifications', '/sociological', '/strategic', '/docs',

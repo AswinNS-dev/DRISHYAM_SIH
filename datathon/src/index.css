@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 /* ============================================
-   SAKSHA DESIGN SYSTEM v2.0
+   DRISHYAM DESIGN SYSTEM v2.0
    Enterprise Crime Intelligence Platform
    ============================================ */
 
@@ -1249,12 +1249,12 @@ input[type="week"] {
 }
 
 /* ============================================================
-   SAKSHA SECURE ACCESS — LOGIN ENVIRONMENT v3
+   DRISHYAM SECURE ACCESS — LOGIN ENVIRONMENT v3
    A dedicated full-viewport security portal identity.
    The login experience is a fixed application surface (no page
    scrolling at any screen size) with its own --lp-* design
    tokens. Dark and light are two designed expressions of the
-   same SAKSHA identity — auth components inherit these tokens.
+   same DRISHYAM identity — auth components inherit these tokens.
    ============================================================ */
 
 .login-root,
@@ -1720,7 +1720,7 @@ input[type="week"] {
 }
 
 /* ============================================================
-   SAKSHA UI KIT v2.1 — SHARED COMPONENT PRIMITIVES
+   DRISHYAM UI KIT v2.1 — SHARED COMPONENT PRIMITIVES
    Every page consumes these; no per-page button/input styling.
    ============================================================ */
 
