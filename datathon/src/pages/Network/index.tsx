@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNetwork } from '../../hooks/useNetwork';
 import GraphExplorerToolbar from '../../components/network/GraphExplorerToolbar';
 import NetworkFilterPanel from '../../components/network/NetworkFilterPanel';
@@ -41,6 +41,10 @@ interface NetworkGraphAreaProps {
   onLinkSelect?: (link: GraphLink) => void;
   onClearFilters: () => void;
   highlightPath?: { nodeIds: string[]; linkKeys: string[] } | null;
+  selectedNodeId?: string | null;
+  onClearSelection?: () => void;
+  suspectOffenderNexus?: boolean;
+  onToggleSuspectOffenderNexus?: () => void;
 }
 
 const NetworkGraphArea: React.FC<NetworkGraphAreaProps> = ({
@@ -51,6 +55,10 @@ const NetworkGraphArea: React.FC<NetworkGraphAreaProps> = ({
   onLinkSelect,
   onClearFilters,
   highlightPath,
+  selectedNodeId,
+  onClearSelection,
+  suspectOffenderNexus,
+  onToggleSuspectOffenderNexus,
 }) => {
   if (loading) {
     return (
@@ -97,6 +105,10 @@ const NetworkGraphArea: React.FC<NetworkGraphAreaProps> = ({
       onLinkSelect={onLinkSelect}
       graphData={graphData}
       highlightPath={highlightPath}
+      selectedNodeId={selectedNodeId}
+      onClearSelection={onClearSelection}
+      suspectOffenderNexus={suspectOffenderNexus}
+      onToggleSuspectOffenderNexus={onToggleSuspectOffenderNexus}
     />
   );
 };
@@ -427,22 +439,84 @@ export const NetworkPageWorkspace: React.FC = () => {
     };
   }, [graphData, gangs]);
 
+  // Dedicated Suspect <-> Offender Nexus Mode (showing network connection between suspect and offender alone)
+  const [suspectOffenderNexus, setSuspectOffenderNexus] = useState<boolean>(false);
+
+  const handleToggleSuspectOffenderNexus = useCallback(() => {
+    setSuspectOffenderNexus((prev) => !prev);
+  }, []);
+
+  const isNexusActive = suspectOffenderNexus || categoryFilter === 'suspect_offender';
+
   // Focus mode: restrict the rendered subgraph to N hops around a chosen entity,
-  // while respecting active source visibility filters.
+  // or isolate Suspect <-> Offender Nexus alone when toggled.
   const displayData = useMemo(() => {
     const base = graphData ?? { nodes: [], links: [] };
+
+    // 1. Suspect <-> Offender Nexus Mode: Isolate suspect & offender connections alone
+    if (isNexusActive) {
+      const isSuspectOrOffender = (cat: string) => cat === 'suspect' || cat === 'offender';
+      const candidateNodes = base.nodes.filter((n) => isSuspectOrOffender(n.category));
+      const candidateIds = new Set(candidateNodes.map((n) => n.id));
+
+      const candidateLinks = base.links.filter((l) => {
+        const sId = typeof l.source === 'object' && l.source !== null ? l.source.id : String(l.source);
+        const tId = typeof l.target === 'object' && l.target !== null ? l.target.id : String(l.target);
+        return candidateIds.has(sId) && candidateIds.has(tId);
+      });
+
+      // Filter to connected nodes in this nexus so disconnected nodes don't clutter the view
+      const connectedIds = new Set<string>();
+      candidateLinks.forEach((l) => {
+        const sId = typeof l.source === 'object' && l.source !== null ? l.source.id : String(l.source);
+        const tId = typeof l.target === 'object' && l.target !== null ? l.target.id : String(l.target);
+        connectedIds.add(sId);
+        connectedIds.add(tId);
+      });
+
+      const activeNodes = candidateNodes.filter((n) => connectedIds.has(n.id));
+      const targetNodes = activeNodes.length > 0 ? activeNodes : candidateNodes;
+
+      // Ensure links have clean string IDs so Three-ForceGraph attaches directly to node objects
+      const cleanLinks = candidateLinks.map((l) => ({
+        ...l,
+        source: typeof l.source === 'object' && l.source !== null ? l.source.id : String(l.source),
+        target: typeof l.target === 'object' && l.target !== null ? l.target.id : String(l.target),
+      }));
+
+      // Ensure nodes have clean coordinates so D3 force simulation can organize them naturally
+      const cleanNodes = targetNodes.map((n) => ({
+        ...n,
+        x: undefined,
+        y: undefined,
+        z: undefined,
+        vx: undefined,
+        vy: undefined,
+        vz: undefined,
+      }));
+
+      const nexusBase = {
+        nodes: cleanNodes,
+        links: cleanLinks,
+      };
+
+      if (!focusedNodeId) return nexusBase;
+      return computeFocusSubgraph(nexusBase, focusedNodeId, focusHops);
+    }
+
+    // 2. Multi-source intelligence visibility filters
     const visibleNodes = base.nodes.filter((n) => sourceVisibility[n.category] !== false);
     const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
     const visibleLinks = base.links.filter((l) => {
-      const sId = typeof l.source === 'object' ? l.source.id : l.source;
-      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+      const sId = typeof l.source === 'object' ? l.source.id : String(l.source);
+      const tId = typeof l.target === 'object' ? l.target.id : String(l.target);
       return visibleNodeIds.has(sId) && visibleNodeIds.has(tId);
     });
     const filteredBase = { nodes: visibleNodes, links: visibleLinks };
 
     if (!focusedNodeId) return filteredBase;
     return computeFocusSubgraph(filteredBase, focusedNodeId, focusHops);
-  }, [graphData, sourceVisibility, focusedNodeId, focusHops]);
+  }, [graphData, isNexusActive, sourceVisibility, focusedNodeId, focusHops]);
 
 
   const focusedNode =
@@ -519,6 +593,8 @@ export const NetworkPageWorkspace: React.FC = () => {
         sourceVisibility={sourceVisibility}
         onToggleSourceVisibility={handleToggleSourceVisibility}
         onResetSourceVisibility={handleResetSourceVisibility}
+        suspectOffenderNexus={isNexusActive}
+        onToggleSuspectOffenderNexus={handleToggleSuspectOffenderNexus}
       />
 
       {/* Issue #226: structured multi-parameter search & filter controls */}
@@ -763,36 +839,46 @@ export const NetworkPageWorkspace: React.FC = () => {
       <div className="flex-1 w-full">
         {activeView === '3d_explorer' && (
           <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-8 h-full min-h-[420px] lg:min-h-[62vh]">
+            <div
+              className={`h-full min-h-[640px] lg:min-h-[82vh] transition-all duration-300 ${
+                selectedNode || selectedLink ? 'lg:col-span-8 xl:col-span-9' : 'lg:col-span-12'
+              }`}
+            >
               <NetworkGraphArea
                 graphData={displayData}
                 loading={loading}
                 error={error}
                 highlightPath={highlightPath}
+                selectedNodeId={selectedNode?.id}
                 onNodeSelect={handleNodeSelect}
                 onLinkSelect={handleLinkSelect}
+                onClearSelection={() => setSelectedNode(null)}
                 onClearFilters={() => setNetworkFilters({})}
+                suspectOffenderNexus={isNexusActive}
+                onToggleSuspectOffenderNexus={handleToggleSuspectOffenderNexus}
               />
             </div>
-            <div className="lg:col-span-4 h-full min-h-[420px] lg:min-h-[62vh] bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
-              <WorkspaceSidePanel
-                selectedNode={selectedNode}
-                selectedLink={selectedLink}
-                nodes={graphData?.nodes || []}
-                links={graphData?.links || []}
-                emptyMessage="Select suspect or relationship inside the 3D graph to unlock dossiers telemetry"
-                onCloseNode={() => setSelectedNode(null)}
-                onCloseLink={() => setSelectedLink(null)}
-                onSelectNode={handleNodeSelect}
-                onSelectLink={handleLinkSelect}
-                onSetPathSource={handleSetPathSource}
-                onSetPathTarget={handleSetPathTarget}
-                onFocusNode={handleFocusNode}
-                onClearFocus={handleClearFocus}
-                isFocused={focusIsSelected}
-                focusHops={focusHops}
-              />
-            </div>
+            {(selectedNode || selectedLink) && (
+              <div className="lg:col-span-4 xl:col-span-3 h-full min-h-[640px] lg:min-h-[82vh] bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden animate-in fade-in duration-200">
+                <WorkspaceSidePanel
+                  selectedNode={selectedNode}
+                  selectedLink={selectedLink}
+                  nodes={graphData?.nodes || []}
+                  links={graphData?.links || []}
+                  emptyMessage="Select suspect or relationship inside the 3D graph to unlock dossiers telemetry"
+                  onCloseNode={() => setSelectedNode(null)}
+                  onCloseLink={() => setSelectedLink(null)}
+                  onSelectNode={handleNodeSelect}
+                  onSelectLink={handleLinkSelect}
+                  onSetPathSource={handleSetPathSource}
+                  onSetPathTarget={handleSetPathTarget}
+                  onFocusNode={handleFocusNode}
+                  onClearFocus={handleClearFocus}
+                  isFocused={focusIsSelected}
+                  focusHops={focusHops}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -851,15 +937,19 @@ export const NetworkPageWorkspace: React.FC = () => {
               />
             </div>
             <div className="lg:col-span-8 h-full flex flex-col gap-2 min-h-0">
-              <div className="flex-1 min-h-[300px] lg:min-h-[54vh]">
+              <div className="flex-1 min-h-[480px] lg:min-h-[66vh]">
                 <NetworkGraphArea
                   graphData={displayData}
                   loading={loading}
                   error={error}
                   highlightPath={highlightPath}
+                  selectedNodeId={selectedNode?.id}
                   onNodeSelect={handleNodeSelect}
                   onLinkSelect={handleLinkSelect}
+                  onClearSelection={() => setSelectedNode(null)}
                   onClearFilters={() => setNetworkFilters({})}
+                  suspectOffenderNexus={isNexusActive}
+                  onToggleSuspectOffenderNexus={handleToggleSuspectOffenderNexus}
                 />
               </div>
               <div className="h-[200px] shrink-0 bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
@@ -949,8 +1039,10 @@ export const NetworkPageWorkspace: React.FC = () => {
                   loading={loading}
                   error={error}
                   highlightPath={highlightPath}
+                  selectedNodeId={selectedNode?.id}
                   onNodeSelect={handleNodeSelect}
                   onLinkSelect={handleLinkSelect}
+                  onClearSelection={() => setSelectedNode(null)}
                   onClearFilters={() => setNetworkFilters({})}
                 />
               </div>

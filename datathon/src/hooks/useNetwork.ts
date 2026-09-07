@@ -93,7 +93,7 @@ export function useNetwork() {
     setLoading(true);
     setError(null);
     try {
-      const cat = categoryFilter === 'all' ? undefined : categoryFilter;
+      const cat = categoryFilter === 'all' || categoryFilter === 'suspect_offender' ? undefined : categoryFilter;
       const res = await getFullNetworkGraph(cat, minRisk, undefined, false, effectiveFilters(networkFilters));
       setGraphData({
         nodes: res.nodes as GraphNode[],

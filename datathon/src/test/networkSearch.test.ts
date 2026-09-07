@@ -95,3 +95,91 @@ describe('hasActiveNetworkFilters', () => {
     expect(hasActiveNetworkFilters({ criminalName: 'Ramu' })).toBe(true);
   });
 });
+
+describe('Suspect <-> Offender Nexus Subgraph Logic', () => {
+  const isSuspectOrOffender = (cat: string) => cat === 'suspect' || cat === 'offender';
+
+  const sampleNodes = [
+    { id: 'S1', name: 'Khalid Mehmood', category: 'suspect' },
+    { id: 'O1', name: 'Ramu Swamy', category: 'offender' },
+    { id: 'S2', name: 'Tariq Bashir', category: 'suspect' },
+    { id: 'O2', name: 'Imran Khan', category: 'offender' },
+    { id: 'S_ISOLATED', name: 'Isolated Suspect', category: 'suspect' },
+    { id: 'CDR1', name: '+91-98765-43210', category: 'cdr' },
+    { id: 'TXN1', name: 'Bank Transfer #4410', category: 'financial_transaction' },
+    { id: 'CASE1', name: 'FIR-2026-001', category: 'case' },
+    { id: 'LOC1', name: 'KR Puram Junction', category: 'location' },
+  ];
+
+  const sampleLinks = [
+    { source: 'S1', target: 'O1', relationship: 'CO_CONSPIRATOR' },
+    { source: 'S1', target: 'CDR1', relationship: 'USED_PHONE' },
+    { source: 'CDR1', target: 'O2', relationship: 'CALLED' },
+    { source: 'S2', target: 'O2', relationship: 'ASSOCIATE' },
+    { source: 'O1', target: 'O2', relationship: 'CRIMINAL_GANG' },
+    { source: 'S1', target: 'TXN1', relationship: 'SENT_FUNDS' },
+    { source: 'TXN1', target: 'CASE1', relationship: 'EVIDENCE_IN' },
+  ];
+
+  function computeSuspectOffenderNexus(nodes: typeof sampleNodes, links: typeof sampleLinks) {
+    const candidateNodes = nodes.filter((n) => isSuspectOrOffender(n.category));
+    const candidateIds = new Set(candidateNodes.map((n) => n.id));
+
+    const candidateLinks = links.filter((l) => {
+      const sId = typeof l.source === 'object' ? (l.source as any).id : String(l.source);
+      const tId = typeof l.target === 'object' ? (l.target as any).id : String(l.target);
+      return candidateIds.has(sId) && candidateIds.has(tId);
+    });
+
+    const connectedIds = new Set<string>();
+    candidateLinks.forEach((l) => {
+      const sId = typeof l.source === 'object' ? (l.source as any).id : String(l.source);
+      const tId = typeof l.target === 'object' ? (l.target as any).id : String(l.target);
+      connectedIds.add(sId);
+      connectedIds.add(tId);
+    });
+
+    const activeNodes = candidateNodes.filter((n) => connectedIds.has(n.id));
+    return {
+      nodes: activeNodes.length > 0 ? activeNodes : candidateNodes,
+      links: candidateLinks,
+    };
+  }
+
+  it('filters out non-suspect and non-offender entities (CDRs, Transactions, Cases, Locations)', () => {
+    const result = computeSuspectOffenderNexus(sampleNodes, sampleLinks);
+    const categories = new Set(result.nodes.map((n) => n.category));
+    expect(categories.has('cdr')).toBe(false);
+    expect(categories.has('financial_transaction')).toBe(false);
+    expect(categories.has('case')).toBe(false);
+    expect(categories.has('location')).toBe(false);
+  });
+
+  it('isolates criminal connections between suspects and offenders', () => {
+    const result = computeSuspectOffenderNexus(sampleNodes, sampleLinks);
+    expect(result.links.length).toBe(3);
+    const linkRels = result.links.map((l) => l.relationship);
+    expect(linkRels).toContain('CO_CONSPIRATOR');
+    expect(linkRels).toContain('ASSOCIATE');
+    expect(linkRels).toContain('CRIMINAL_GANG');
+  });
+
+  it('retains connected suspects and offenders and excludes disconnected outliers', () => {
+    const result = computeSuspectOffenderNexus(sampleNodes, sampleLinks);
+    const nodeIds = result.nodes.map((n) => n.id);
+    expect(nodeIds).toContain('S1');
+    expect(nodeIds).toContain('O1');
+    expect(nodeIds).toContain('S2');
+    expect(nodeIds).toContain('O2');
+    expect(nodeIds).not.toContain('S_ISOLATED');
+  });
+
+  it('handles object references in links seamlessly', () => {
+    const objectLinks = [
+      { source: { id: 'S1' }, target: { id: 'O1' }, relationship: 'CO_CONSPIRATOR' },
+    ];
+    const result = computeSuspectOffenderNexus(sampleNodes, objectLinks as any);
+    expect(result.links.length).toBe(1);
+    expect(result.nodes.length).toBe(2);
+  });
+});

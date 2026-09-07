@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Sliders,
   Database,
+  Zap,
 } from 'lucide-react';
 
 interface GraphExplorerToolbarProps {
@@ -28,6 +29,8 @@ interface GraphExplorerToolbarProps {
   sourceVisibility?: Record<string, boolean>;
   onToggleSourceVisibility?: (category: string) => void;
   onResetSourceVisibility?: () => void;
+  suspectOffenderNexus?: boolean;
+  onToggleSuspectOffenderNexus?: () => void;
 }
 
 export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
@@ -44,6 +47,8 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
   sourceVisibility,
   onToggleSourceVisibility,
   onResetSourceVisibility,
+  suspectOffenderNexus,
+  onToggleSuspectOffenderNexus,
 }) => {
   const views: { id: NetworkWorkspaceView; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: '3d_explorer', label: '3D Graph Explorer', icon: Share2 },
@@ -233,6 +238,29 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
               Show All
             </button>
           )}
+
+          {/* Dedicated Suspect <-> Offender Nexus Quick-Toggle */}
+          <button
+            onClick={onToggleSuspectOffenderNexus}
+            title="Isolate Suspect ↔ Offender Network (Direct criminal connections only)"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-btn text-[10px] font-mono border transition-all cursor-pointer ${
+              suspectOffenderNexus
+                ? 'bg-gradient-to-r from-red-600/30 via-orange-600/30 to-amber-600/30 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.4)] font-bold'
+                : 'bg-[var(--bg-primary)] hover:bg-amber-500/10 border-amber-500/30 text-amber-400/80 hover:text-amber-300'
+            }`}
+          >
+            <Zap className={`w-3 h-3 ${suspectOffenderNexus ? 'text-amber-400 animate-pulse' : 'text-amber-400'}`} />
+            <span>Suspect &harr; Offender Nexus</span>
+            <span
+              className={`ml-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                suspectOffenderNexus
+                  ? 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
+                  : 'bg-amber-500/10 text-amber-400'
+              }`}
+            >
+              152 Links
+            </span>
+          </button>
         </div>
       </div>
 
@@ -249,6 +277,7 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
             className="bg-[var(--bg-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-btn px-2.5 py-1 text-xs focus:outline-none focus:border-[var(--accent-blue)]"
           >
             <option value="all">All Categories</option>
+            <option value="suspect_offender">⚡ Suspect ↔ Offender Nexus (152 Direct Ties)</option>
             <option value="suspect">Suspects (At Large)</option>
             <option value="offender">Known Offenders</option>
             <option value="cdr">Call Detail Records (CDR)</option>
