@@ -208,6 +208,15 @@ class Settings(BaseSettings):
             return False
         return False
 
+    @field_validator("LLM_CHAT_TEMPERATURE", "LLM_CHAT_MAX_TOKENS", mode="before")
+    @classmethod
+    def parse_empty_numeric_as_default(cls, value, info):
+        """Treat an empty env value ('LLM_CHAT_MAX_TOKENS=') as unset and fall
+        back to the documented default instead of failing int/float parsing."""
+        if value is None or str(value).strip() == "":
+            return cls.model_fields[info.field_name].default
+        return value
+
     @field_validator("SAKSHA_DATA_MODE", mode="before")
     @classmethod
     def validate_data_mode(cls, value):

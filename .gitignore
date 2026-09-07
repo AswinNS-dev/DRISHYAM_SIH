@@ -53,3 +53,5 @@ TODO.md
 *.log
 logs/
 backend/logs/
+
+opencode.json
