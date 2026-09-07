@@ -75,8 +75,15 @@ from app.routes import intelligence
 # Unified model management (continuous retraining, versioning, status)
 from app.routes import model_management
 
+# SIH26189 Phase 7-10: Named Entity Recognition pipeline
+from app.routes import ner
+
+# SIH26189 Phase 4A & 12A: Geographical hierarchy (States, Districts, Stations)
+from app.routes import geography
+
 
 api_router = APIRouter()
+
 
 # Core routes
 api_router.include_router(auth.router)
@@ -141,3 +148,10 @@ api_router.include_router(intelligence.router)
 
 # Unified model management (continuous retraining, versioning, status)
 api_router.include_router(model_management.router)
+
+# SIH26189 Phase 7-10: Named Entity Recognition
+api_router.include_router(ner.router)
+
+# SIH26189 Phase 4A & 12A: Geographical hierarchy
+api_router.include_router(geography.router)
+

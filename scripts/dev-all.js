@@ -11,6 +11,10 @@ const backendDir = resolve(root, 'backend');
 const frontendDir = resolve(root, 'datathon');
 
 const isWindows = process.platform === 'win32';
+const virtualEnvPython = resolve(
+  backendDir,
+  isWindows ? 'venv/Scripts/python.exe' : 'venv/bin/python'
+);
 
 // -----------------------------------------------------
 // Detect Python
@@ -19,7 +23,9 @@ const isWindows = process.platform === 'win32';
 let pythonCommand;
 let pythonArgs = [];
 
-if (isWindows) {
+if (existsSync(virtualEnvPython)) {
+  pythonCommand = virtualEnvPython;
+} else if (isWindows) {
   if (spawnSync('where', ['py'], { stdio: 'ignore' }).status === 0) {
     pythonCommand = 'py';
     pythonArgs = ['-3'];

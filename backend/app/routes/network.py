@@ -67,6 +67,7 @@ def get_full_graph(
     police_station: str | None = Query(None, max_length=500, description="Comma-separated police station jurisdictions (OR)."),
     fir_number: str | None = Query(None, max_length=500, description="Comma-separated FIR or case numbers (OR)."),
     victim_name: str | None = Query(None, max_length=255, description="Filter by victim name (substring, case-insensitive)."),
+    state: str | None = Query(None, max_length=100, description="Filter by state name or state code (case-insensitive)."),
     date_from: str | None = Query(None, description="Only incidents on/after this date (YYYY-MM-DD or ISO 8601)."),
     date_to: str | None = Query(None, description="Only incidents on/before this date (YYYY-MM-DD or ISO 8601)."),
     db: Session = Depends(get_db),
@@ -93,6 +94,7 @@ def get_full_graph(
         victim_name=victim_name,
         date_from=_parse_network_date(date_from),
         date_to=_parse_network_date(date_to, end_of_day=True),
+        state=state,
     )
 
 

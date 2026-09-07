@@ -27,6 +27,8 @@ from app.models.evidence import Evidence
 from app.models.identity import IdentityIdentifier
 from app.models.intervention import Intervention
 from app.models.location import Location
+from app.models.geography import State
+from app.models.intel_entity import EntityRelationship, Organization, PhoneNumber, Vehicle
 from app.models.notification import Notification
 from app.models.officer import Officer
 from app.models.victim import Victim
@@ -127,6 +129,7 @@ def _filter_fir_ids(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    state: str | None = None,
 ) -> set[Any]:
     """Return the set of FIR ids matching the supplied case filters (issue #226).
 
@@ -156,8 +159,20 @@ def _filter_fir_ids(
         query = query.join(Victim, FIRVictimLink.victim_id == Victim.id)
         query = query.filter(Victim.full_name.ilike(pattern))
 
-    if crime_type or district or police_station or fir_number:
+    if state or crime_type or district or police_station or fir_number:
         query = query.join(CrimeCase, FIR.crime_case_id == CrimeCase.id)
+
+    if state:
+        values = _parse_multi_values(state)
+        if values:
+            query = query.join(Location, CrimeCase.location_id == Location.id)
+            state_conds: list[Any] = []
+            for v in values:
+                state_conds.append(Location.state.ilike(f"%{v}%"))
+                state_conds.append(Location.state_id.in_(
+                    db.query(State.id).filter(or_(State.state_code.ilike(v), State.state_name.ilike(f"%{v}%")))
+                ))
+            query = query.filter(or_(*state_conds))
 
     if crime_type:
         values = _parse_multi_values(crime_type)
@@ -173,7 +188,8 @@ def _filter_fir_ids(
     if district:
         values = _parse_multi_values(district)
         if values:
-            query = query.join(Location, CrimeCase.location_id == Location.id)
+            if not state:
+                query = query.join(Location, CrimeCase.location_id == Location.id)
             query = query.filter(
                 or_(*[Location.district.ilike(f"%{v}%") for v in values])
             )
@@ -181,7 +197,8 @@ def _filter_fir_ids(
     if police_station:
         values = _parse_multi_values(police_station)
         if values:
-            query = query.join(Location, CrimeCase.location_id == Location.id)
+            if not state and not district:
+                query = query.join(Location, CrimeCase.location_id == Location.id)
             query = query.filter(
                 or_(*[Location.station.ilike(f"%{v}%") for v in values])
             )
@@ -213,9 +230,11 @@ def _has_case_filters(
     victim_name: str | None,
     date_from: datetime | None,
     date_to: datetime | None,
+    state: str | None = None,
 ) -> bool:
     """True when any multi-parameter case filter is active."""
     return any((
+        state,
         criminal_name,
         crime_type,
         district,
@@ -239,6 +258,7 @@ def _build_sql_graph(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    state: str | None = None,
 ) -> tuple[list[NetworkNode], list[NetworkEdge]]:
     """Construct complete graph from PostgreSQL database relations with full provenance tracking.
 
@@ -258,6 +278,7 @@ def _build_sql_graph(
         victim_name,
         date_from,
         date_to,
+        state=state,
     ):
         filtered_fir_ids = _filter_fir_ids(
             db,
@@ -269,6 +290,7 @@ def _build_sql_graph(
             victim_name=victim_name,
             date_from=date_from,
             date_to=date_to,
+            state=state,
         )
 
     query = (
@@ -571,6 +593,7 @@ def _build_sql_graph(
         all_officers = db.query(Officer).filter(Officer.id.in_(involved_officer_ids)).all()
     else:
         all_officers = db.query(Officer).all()
+    officer_fir_counts = Counter(f.investigating_officer_id for f in firs if f.investigating_officer_id)
     for o in all_officers:
         o_id = f"officer-{o.id}"
         if o_id not in nodes_map:
@@ -580,7 +603,7 @@ def _build_sql_graph(
                 category=NetworkNodeCategory.OFFICER,
                 riskScore=10.0,
                 details=f"{o.rank or 'Officer'}, {o.station} ({o.badge_number})",
-                casesCount=len(o.firs) if hasattr(o, 'firs') else 0,
+                casesCount=officer_fir_counts.get(o.id, 0),
                 district=o.district,
                 isSeed=False,
             )
@@ -595,6 +618,7 @@ def _build_sql_graph(
         all_criminals = db.query(Criminal).filter(Criminal.id.in_(linked_criminal_ids)).all()
     else:
         all_criminals = db.query(Criminal).all()
+    criminal_fir_counts = Counter(link.criminal_id for f in firs for link in f.criminal_links if link.criminal_id)
     for c in all_criminals:
         c_id = f"criminal-{c.id}"
         if c_id not in nodes_map:
@@ -605,7 +629,7 @@ def _build_sql_graph(
                 category=NetworkNodeCategory.SUSPECT if c.status == "at_large" else NetworkNodeCategory.OFFENDER,
                 riskScore=_criminal_risk(c),
                 details=c.mo_summary or c.identifying_marks or "Registered criminal record",
-                casesCount=len(c.fir_links) if hasattr(c, 'fir_links') else 0,
+                casesCount=criminal_fir_counts.get(c.id, 0),
                 phone=None,
                 gangAffiliation=(c.gang_affiliation or "").strip() or None,
                 status=c.status,
@@ -967,6 +991,110 @@ def _build_sql_graph(
                             is_demo_derived=(case.dataset_provenance == "demo"),
                         ))
 
+    # 5. UNIFIED ENTITY RELATIONSHIPS & NER-DERIVED CANDIDATE LEADS
+    rel_query = db.query(EntityRelationship).filter(
+        EntityRelationship.status.in_(["active", "under_review"])
+    )
+    all_entity_rels = rel_query.all()
+
+    if all_entity_rels:
+        vehicle_ids = {r.source_id for r in all_entity_rels if r.source_type == "vehicle"} | {r.target_id for r in all_entity_rels if r.target_type == "vehicle"}
+        phone_ids = {r.source_id for r in all_entity_rels if r.source_type in ("phone", "cdr")} | {r.target_id for r in all_entity_rels if r.target_type in ("phone", "cdr")}
+        org_ids = {r.source_id for r in all_entity_rels if r.source_type in ("organization", "gang")} | {r.target_id for r in all_entity_rels if r.target_type in ("organization", "gang")}
+
+        vehs_by_id = {v.id: v for v in db.query(Vehicle).filter(Vehicle.id.in_(vehicle_ids)).all()} if vehicle_ids else {}
+        phones_by_id = {p.id: p for p in db.query(PhoneNumber).filter(PhoneNumber.id.in_(phone_ids)).all()} if phone_ids else {}
+        orgs_by_id = {o.id: o for o in db.query(Organization).filter(Organization.id.in_(org_ids)).all()} if org_ids else {}
+
+        def _resolve_entity_node_id(etype: str, eid: Any) -> str | None:
+            if etype in ("person", "criminal"):
+                return f"criminal-{eid}"
+            elif etype == "victim":
+                return f"victim-{eid}"
+            elif etype == "case":
+                return f"case-{eid}"
+            elif etype == "vehicle":
+                v_obj = vehs_by_id.get(eid)
+                v_nid = f"vehicle-{eid}"
+                if v_nid not in nodes_map and v_obj:
+                    nodes_map[v_nid] = NetworkNode(
+                        id=v_nid,
+                        name=v_obj.registration_number,
+                        category=NetworkNodeCategory.VEHICLE,
+                        riskScore=75.0 if v_obj.status == "wanted" else 50.0,
+                        details=f"{v_obj.make or ''} {v_obj.model or ''} ({v_obj.color or ''}) - {v_obj.status}".strip(),
+                        casesCount=1,
+                        isSeed=v_obj.is_demo_derived,
+                    )
+                return v_nid
+            elif etype in ("phone", "cdr"):
+                p_obj = phones_by_id.get(eid)
+                p_nid = f"cdr-{eid}"
+                if p_nid not in nodes_map and p_obj:
+                    nodes_map[p_nid] = NetworkNode(
+                        id=p_nid,
+                        name=p_obj.number,
+                        category=NetworkNodeCategory.CDR,
+                        riskScore=65.0,
+                        details=f"Carrier: {p_obj.carrier or 'Unknown'}, Reg: {p_obj.registered_name or 'N/A'}",
+                        phone=p_obj.number,
+                        casesCount=1,
+                        isSeed=p_obj.is_demo_derived,
+                    )
+                return p_nid
+            elif etype in ("organization", "gang"):
+                o_obj = orgs_by_id.get(eid)
+                o_nid = f"gang-{eid}"
+                if o_nid not in nodes_map and o_obj:
+                    nodes_map[o_nid] = NetworkNode(
+                        id=o_nid,
+                        name=o_obj.name,
+                        category=NetworkNodeCategory.GANG,
+                        riskScore=o_obj.risk_score * 100.0 if o_obj.risk_score else 80.0,
+                        details=f"Type: {o_obj.org_type or 'Syndicate'}, District: {o_obj.district or 'N/A'}",
+                        gangAffiliation=o_obj.name,
+                        district=o_obj.district,
+                        casesCount=1,
+                        isSeed=o_obj.is_demo_derived,
+                    )
+                return o_nid
+            elif etype == "location":
+                return f"location-{eid}"
+            return None
+
+        for er in all_entity_rels:
+            s_nid = _resolve_entity_node_id(er.source_type, er.source_id)
+            t_nid = _resolve_entity_node_id(er.target_type, er.target_id)
+            if not s_nid or not t_nid or s_nid not in nodes_map or t_nid not in nodes_map:
+                continue
+
+            is_ner = (er.provenance == "NER_EXTRACTED")
+            rel_label = er.relationship_type.replace("_", " ").title()
+            if is_ner:
+                rel_label = f"POTENTIAL: {rel_label} (NER lead - under review)"
+
+            edges_list.append(NetworkEdge(
+                source=s_nid,
+                target=t_nid,
+                relationship=rel_label,
+                relationship_type=er.relationship_type.upper(),
+                provenance=er.provenance,
+                verification_status="POTENTIAL" if (is_ner or er.status == "under_review") else "VERIFIED",
+                weight=er.weight or 1.0,
+                confidence=er.confidence or 0.5,
+                confidence_level="LOW" if (er.confidence and er.confidence <= 0.5) else "MEDIUM" if (er.confidence and er.confidence <= 0.8) else "HIGH",
+                evidence=[{
+                    "record_type": "entity_relationship",
+                    "record_id": str(er.id),
+                    "details": f"{er.inferred_from or er.relationship_type} [Provenance: {er.provenance}]",
+                }],
+                is_demo_derived=True,
+                operational_warning=(
+                    "Assistive NER Candidate Lead under review. Requires manual human verification before operational action."
+                    if is_ner else None
+                ),
+            ))
+
     # Apply Category & Risk filters
     category_priority = {
         NetworkNodeCategory.SUSPECT: 0,
@@ -1100,6 +1228,7 @@ def get_full_network_graph(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    state: str | None = None,
 ) -> NetworkGraphResponse:
     """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback).
 
@@ -1118,6 +1247,7 @@ def get_full_network_graph(
         victim_name,
         date_from,
         date_to,
+        state=state,
     )
     neo4j_data = None
     if is_neo4j_available() and not has_case_filters:
@@ -1152,6 +1282,7 @@ def get_full_network_graph(
         victim_name=victim_name,
         date_from=date_from,
         date_to=date_to,
+        state=state,
     )
     limited_nodes = nodes[:limit]
     limited_ids = {n.id for n in limited_nodes}

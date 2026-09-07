@@ -11,18 +11,56 @@ import json
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
-from app.auth.dependencies import get_current_user
-from app.auth.rbac import ALL_ROLES, require_roles
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import joinedload
+
+from app.auth.rbac import ALL_ROLES
+from app.core.exceptions import ForbiddenException, UnauthorizedException
+from app.core.security import decode_token
+from app.database.postgres import SessionLocal
 from app.models.user import User
 from app.services.realtime.bus import realtime_bus
 
 router = APIRouter(
     prefix="/realtime",
     tags=["Real-Time Stream"],
-    dependencies=[Depends(require_roles(*ALL_ROLES))],
 )
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v2/auth/login")
 HEARTBEAT_SECONDS = 15
+
+
+def authenticate_sse_user(token: str = Depends(oauth2_scheme)) -> str:
+    """Authenticate SSE user and immediately release the DB connection.
+
+    FastAPI keeps dependency generator contexts (like get_db) open for the entire
+    lifetime of a StreamingResponse. Using an isolated SessionLocal that is explicitly
+    closed in a finally block ensures long-lived SSE connections hold zero pooled DB
+    connections, preventing QueuePool exhaustion (503 Service Unavailable).
+    """
+    try:
+        payload = decode_token(token)
+    except ValueError:
+        raise UnauthorizedException("Invalid or expired token")
+
+    if payload.get("type") != "access":
+        raise UnauthorizedException("Provided token is not an access token")
+
+    db = SessionLocal()
+    try:
+        from app.services.auth_service import is_jti_revoked
+        if is_jti_revoked(db, payload.get("jti")):
+            raise UnauthorizedException("Token has been revoked")
+
+        username = payload.get("sub")
+        user = db.query(User).options(joinedload(User.role)).filter(User.username == username).first()
+        if user is None or not user.is_active:
+            raise UnauthorizedException("User not found or inactive")
+        if user.role.name not in ALL_ROLES:
+            raise ForbiddenException(f"Role '{user.role.name}' is not permitted to access realtime stream")
+        return user.username
+    finally:
+        db.close()
 
 
 async def _event_stream(request: Request, username: str):
@@ -48,11 +86,9 @@ async def _event_stream(request: Request, username: str):
 @router.get("/events")
 async def stream_events(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    username: str = Depends(authenticate_sse_user),
 ):
     """Long-lived SSE stream of real-time platform events for the current user."""
-    # Capture ORM attributes now — the DB session closes before streaming begins.
-    username = current_user.username
     return StreamingResponse(
         _event_stream(request, username),
         media_type="text/event-stream",

@@ -1,0 +1,10 @@
+case_number,category,location_address,occurred_at,status,priority,description
+CR-2026-INT-001,Smuggling & Excise Violations,Electronic City Toll Plaza,2026-08-18 17:32:51.042486+00:00,investigating,critical,Inter-state contraband transport intercepted at Karnataka border; truck KA-09-CD-7717 linked to Hosur godown and Mumbai transit.
+CR-2026-TN-042,Smuggling & Excise Violations,Hosur Industrial Complex,2026-08-20 17:32:51.042486+00:00,investigating,high,Raid on Vanguard Logistics staging warehouse; forged transport manifests and fake e-way bills seized.
+CR-2026-MH-108,Smuggling & Excise Violations,Bandra Kurla Complex,2026-08-23 17:32:51.042486+00:00,open,high,Financial investigation into shell bank accounts routing proceeds of interstate contraband transit.
+CR-2026-CYB-001,Cyber Crime & Online Fraud,Mandir Marg Cyber Node,2026-08-13 17:32:51.042486+00:00,investigating,critical,"Multi-crore loan app extortion and unauthorized cloud scraping syndicate spanning Delhi, Telangana, and Gujarat."
+CR-2026-TS-077,Cyber Crime & Online Fraud,Cyberabad Tech Corridor,2026-08-16 17:32:51.042486+00:00,investigating,high,VOIP call center bust and mule SIM card seizure in Hitec City tech park.
+CR-2026-GJ-051,Cyber Crime & Online Fraud,Navrangpura Business Center,2026-08-24 17:32:51.042486+00:00,investigating,high,Hawala cash liquidation and gold conversion cell dismantled in Ahmedabad.
+CR-2026-BEL-099,Narcotics Smuggling Services,Belagavi Camp Border Gate,2026-08-26 17:32:51.042486+00:00,investigating,critical,Interception of commercial consignment with concealed narcotics on NH4 corridor.
+CR-2026-AP-033,Narcotics Smuggling Services,Governorpet Commercial Zone,2026-08-28 17:32:51.042486+00:00,open,high,Warehouse staging inspection linking agricultural transport fleet to Karnataka border shipments.
+CR-2026-MH-215,Theft & Burglaries,Kolhapur Transit Checkpost,2026-08-30 17:32:51.042486+00:00,investigating,medium,Hawala payoff and stolen vehicle recovery tied to Apex Warehousing syndicate.
