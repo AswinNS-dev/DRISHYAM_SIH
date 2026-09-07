@@ -216,3 +216,14 @@ def list_entity_relationships(
     if relationship_type:
         query = query.filter(EntityRelationship.relationship_type == relationship_type)
     return {"total": query.count(), "results": [serialize_relationship(e) for e in query.limit(limit).all()]}
+
+
+@router.get("/records")
+def list_ingestion_records(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """List raw ingested intelligence documents and their processing status."""
+    records = db.query(IngestionRecord).order_by(IngestionRecord.created_at.desc()).limit(limit).all()
+    return [serialize_record(r) for r in records]
+

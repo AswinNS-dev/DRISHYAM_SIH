@@ -205,10 +205,22 @@ CREATE TABLE roles (
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	PRIMARY KEY (id)
-)
+);
 
-;
 CREATE UNIQUE INDEX ix_roles_name ON roles (name);
+
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+	id UUID NOT NULL,
+	role_id UUID NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+	permission VARCHAR(100) NOT NULL,
+	resource VARCHAR(100) NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+	PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS ix_role_permissions_role_id ON role_permissions (role_id);
+CREATE INDEX IF NOT EXISTS ix_role_permissions_permission ON role_permissions (permission);
+
 
 
 CREATE TABLE vehicles (
@@ -675,7 +687,7 @@ CREATE TABLE criminals (
 	gang_affiliation VARCHAR(255), 
 	neo4j_node_id VARCHAR(100), 
 	image_url VARCHAR(1000), 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -809,14 +821,58 @@ CREATE INDEX ix_ingestion_jobs_source_type ON ingestion_jobs (source_type);
 CREATE INDEX ix_ingestion_jobs_status ON ingestion_jobs (status);
 
 
+CREATE TABLE IF NOT EXISTS states (
+	state_code VARCHAR(10) NOT NULL,
+	state_name VARCHAR(100) NOT NULL,
+	state_type VARCHAR(30) DEFAULT 'state' NOT NULL,
+	id UUID NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+	PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_states_state_code ON states (state_code);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_states_state_name ON states (state_name);
+
+
+CREATE TABLE IF NOT EXISTS districts (
+	state_id UUID NOT NULL,
+	district_code VARCHAR(20) NOT NULL,
+	district_name VARCHAR(100) NOT NULL,
+	id UUID NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(state_id) REFERENCES states (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_districts_state_id ON districts (state_id);
+CREATE INDEX IF NOT EXISTS ix_districts_district_name ON districts (district_name);
+
+
+CREATE TABLE IF NOT EXISTS police_stations (
+	district_id UUID NOT NULL,
+	station_code VARCHAR(50) NOT NULL,
+	station_name VARCHAR(150) NOT NULL,
+	latitude FLOAT NOT NULL,
+	longitude FLOAT NOT NULL,
+	id UUID NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(district_id) REFERENCES districts (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_police_stations_district_id ON police_stations (district_id);
+CREATE INDEX IF NOT EXISTS ix_police_stations_station_name ON police_stations (station_name);
+
+
 CREATE TABLE locations (
 	address VARCHAR(500), 
 	district VARCHAR(100) NOT NULL, 
 	station VARCHAR(100), 
+	state VARCHAR(100),
 	latitude FLOAT NOT NULL, 
 	longitude FLOAT NOT NULL, 
 	pincode VARCHAR(10), 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	state_id UUID,
+	district_id UUID,
+	police_station_id UUID,
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -825,12 +881,18 @@ CREATE TABLE locations (
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT uq_location_station_address UNIQUE (station, address), 
-	FOREIGN KEY(source_import_job_id) REFERENCES import_jobs (id) ON DELETE SET NULL
+	FOREIGN KEY(source_import_job_id) REFERENCES import_jobs (id) ON DELETE SET NULL,
+	FOREIGN KEY(state_id) REFERENCES states (id) ON DELETE SET NULL,
+	FOREIGN KEY(district_id) REFERENCES districts (id) ON DELETE SET NULL,
+	FOREIGN KEY(police_station_id) REFERENCES police_stations (id) ON DELETE SET NULL
 )
 
 ;
 CREATE INDEX ix_locations_station ON locations (station);
 CREATE INDEX ix_locations_district ON locations (district);
+CREATE INDEX ix_locations_state_id ON locations (state_id);
+CREATE INDEX ix_locations_district_id ON locations (district_id);
+CREATE INDEX ix_locations_police_station_id ON locations (police_station_id);
 CREATE INDEX ix_locations_dataset_provenance ON locations (dataset_provenance);
 CREATE INDEX ix_locations_source_import_job_id ON locations (source_import_job_id);
 
@@ -867,7 +929,7 @@ CREATE TABLE officers (
 	email VARCHAR(255), 
 	status VARCHAR(50) NOT NULL, 
 	image_url VARCHAR(1000), 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -919,7 +981,7 @@ CREATE TABLE victims (
 	statement TEXT, 
 	neo4j_node_id VARCHAR(100), 
 	image_url VARCHAR(1000), 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -949,7 +1011,7 @@ CREATE TABLE crime_cases (
 	priority VARCHAR(30), 
 	progress INTEGER, 
 	assigned_officer_id UUID, 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -1081,7 +1143,7 @@ CREATE TABLE evidence (
 	created_by VARCHAR(255), 
 	assigned_to UUID, 
 	storage_path VARCHAR(500), 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -1112,7 +1174,7 @@ CREATE TABLE firs (
 	status VARCHAR(30) NOT NULL, 
 	narrative TEXT, 
 	attachments TEXT, 
-	dataset_provenance VARCHAR(20) NOT NULL, 
+	dataset_provenance VARCHAR(20) DEFAULT 'demo' NOT NULL, 
 	source_import_job_id UUID, 
 	source_file VARCHAR(500), 
 	source_row_ref VARCHAR(100), 
@@ -1178,6 +1240,35 @@ CREATE TABLE raw_ingested_data (
 CREATE INDEX ix_raw_ingested_data_source_type ON raw_ingested_data (source_type);
 CREATE INDEX ix_raw_ingested_data_processing_status ON raw_ingested_data (processing_status);
 CREATE INDEX ix_raw_ingested_data_external_ref ON raw_ingested_data (external_ref);
+
+
+CREATE TABLE IF NOT EXISTS ner_extractions (
+	record_id UUID NOT NULL,
+	entity_type VARCHAR(50) NOT NULL,
+	entity_text VARCHAR(500) NOT NULL,
+	start_offset INTEGER NOT NULL,
+	end_offset INTEGER NOT NULL,
+	confidence FLOAT DEFAULT 1.0 NOT NULL,
+	engine VARCHAR(50) NOT NULL,
+	normalized_ref VARCHAR(255),
+	match_status VARCHAR(50) DEFAULT 'unmatched' NOT NULL,
+	matched_entity_type VARCHAR(50),
+	matched_entity_id UUID,
+	review_status VARCHAR(30) DEFAULT 'pending' NOT NULL,
+	reviewed_by_id UUID,
+	reviewed_at TIMESTAMP WITH TIME ZONE,
+	review_note TEXT,
+	id UUID NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(record_id) REFERENCES raw_ingested_data (id) ON DELETE CASCADE,
+	FOREIGN KEY(reviewed_by_id) REFERENCES users (id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS ix_ner_extractions_record_id ON ner_extractions (record_id);
+CREATE INDEX IF NOT EXISTS ix_ner_extractions_entity_type ON ner_extractions (entity_type);
+CREATE INDEX IF NOT EXISTS ix_ner_extractions_review_status ON ner_extractions (review_status);
+CREATE INDEX IF NOT EXISTS ix_ner_extractions_match_status ON ner_extractions (match_status);
+CREATE INDEX IF NOT EXISTS ix_ner_extractions_created_at ON ner_extractions (created_at);
 
 
 CREATE TABLE reports (
@@ -1330,7 +1421,7 @@ CREATE TABLE fir_criminal_links (
 	fir_id UUID NOT NULL, 
 	criminal_id UUID NOT NULL, 
 	role VARCHAR(50), 
-	id UUID NOT NULL, 
+	id UUID DEFAULT gen_random_uuid() NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT uq_fir_criminal UNIQUE (fir_id, criminal_id), 
 	FOREIGN KEY(fir_id) REFERENCES firs (id) ON DELETE CASCADE, 
@@ -1345,7 +1436,7 @@ CREATE INDEX ix_fir_criminal_links_criminal_id ON fir_criminal_links (criminal_i
 CREATE TABLE fir_victim_links (
 	fir_id UUID NOT NULL, 
 	victim_id UUID NOT NULL, 
-	id UUID NOT NULL, 
+	id UUID DEFAULT gen_random_uuid() NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT uq_fir_victim UNIQUE (fir_id, victim_id), 
 	FOREIGN KEY(fir_id) REFERENCES firs (id) ON DELETE CASCADE, 
@@ -1520,7 +1611,7 @@ INSERT INTO fir_victim_links (fir_id, victim_id) VALUES
 ON CONFLICT DO NOTHING;
 
 -- â”€â”€ Evidence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-INSERT INTO evidence (id, case_id, title, description, evidence_type, status, storage_path, dataset_provenance) VALUES
+INSERT INTO evidence (id, case_id, title, evidence_type, description, status, storage_path, dataset_provenance) VALUES
     ('12000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'EV-DEM-0001', 'digital', 'CCTV clip of truck at gate — Whitefield warehouse gate (scene, 2026-07-14)', 'collected', 'Evidence Locker 1', 'demo'),
     ('12000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'EV-DEM-0002', 'physical', 'Sealed contraband packets — Highway tea stall (recovery, 2026-07-29)', 'collected', 'Evidence Locker 2', 'demo'),
     ('12000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'EV-DEM-0003', 'document', 'Port-gate toll records — Mangaluru toll office (2026-08-11)', 'collected', 'Evidence Locker 3', 'demo')
@@ -1637,9 +1728,9 @@ INSERT INTO anomalies
 ON CONFLICT (id) DO NOTHING;
 
 -- â”€â”€ Notifications (intelligence alerts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-INSERT INTO notifications (id, recipient_id, title, message, type, severity, created_at, is_read) VALUES
-    ('1f000000-0000-0000-0000-000000000001', NULL, 'Suspicious pattern detected', 'Repeated communication channel detected between 9880000203 and 9880000204. Review on the Network page.', 'pattern_alert', 'high',   '2026-08-08 07:05:00+00', FALSE),
-    ('1f000000-0000-0000-0000-000000000002', NULL, 'Cross-case connection found', 'Karthik Gowda appears in two active cases. Open the network graph for the shared-case view.',            'intel_alert',   'medium','2026-08-10 08:25:00+00', FALSE)
+INSERT INTO notifications (id, user_id, subject, notification_type, category, title, message, severity, priority, status, is_read, is_dismissed, is_broadcast, created_at) VALUES
+    ('1f000000-0000-0000-0000-000000000001', NULL, 'Suspicious pattern detected', 'pattern_alert', 'system_notification', 'Suspicious pattern detected', 'Repeated communication channel detected between 9880000203 and 9880000204. Review on the Network page.', 'high', 'high', 'unread', FALSE, FALSE, TRUE, '2026-08-08 07:05:00+00'),
+    ('1f000000-0000-0000-0000-000000000002', NULL, 'Cross-case connection found', 'intel_alert', 'system_notification', 'Cross-case connection found', 'Karthik Gowda appears in two active cases. Open the network graph for the shared-case view.', 'medium', 'medium', 'unread', FALSE, FALSE, TRUE, '2026-08-10 08:25:00+00')
 ON CONFLICT (id) DO NOTHING;
 
 -- â”€â”€ Role permissions (SIH26189 tiers; ingestion is admin-only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

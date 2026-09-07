@@ -13,9 +13,15 @@ import {
 import {
   getCrimeCategories,
   getLocationsList,
+  getStates,
+  getDistricts,
+  getPoliceStations,
   type CrimeCategoryRecord,
   type LocationSimpleRecord,
   type NetworkFilterParams,
+  type StateRecord,
+  type DistrictRecord,
+  type PoliceStationRecord,
 } from '../../services/api';
 import { parseCombinedSearch } from '../../utils/networkSearch';
 
@@ -99,6 +105,14 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
   const [districts, setDistricts] = useState<string[]>([]);
   const [stations, setStations] = useState<string[]>([]);
 
+  // Cascading Geography Hierarchy state
+  const [states, setStates] = useState<StateRecord[]>([]);
+  const [selectedStateCode, setSelectedStateCode] = useState<string>(filters.state || '');
+  const [hierarchicalDistricts, setHierarchicalDistricts] = useState<DistrictRecord[]>([]);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
+  const [hierarchicalStations, setHierarchicalStations] = useState<PoliceStationRecord[]>([]);
+  const [selectedStationCode, setSelectedStationCode] = useState<string>('');
+
   // Draft (unapplied) filter state — edited freely, committed via Apply Filters.
   const [search, setSearch] = useState<string>('');
   const [selectedCrimeTypes, setSelectedCrimeTypes] = useState<string[]>([]);
@@ -112,12 +126,15 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
     let active = true;
     (async () => {
       try {
-        const [cats, locs] = await Promise.all([
+        const [cats, locs, stateList] = await Promise.all([
           getCrimeCategories(),
           getLocationsList(),
+          getStates(),
         ]);
         if (!active) return;
         setCrimeTypes((cats as CrimeCategoryRecord[]).map((c) => c.name).filter(Boolean));
+        setStates(stateList);
+
         const districtSet = new Set<string>();
         const stationSet = new Set<string>();
         for (const loc of locs as LocationSimpleRecord[]) {
@@ -135,12 +152,68 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
     };
   }, []);
 
+  // When selected state changes in cascading dropdown, fetch districts
+  useEffect(() => {
+    if (!selectedStateCode) {
+      setHierarchicalDistricts([]);
+      setSelectedDistrictId('');
+      setHierarchicalStations([]);
+      setSelectedStationCode('');
+      return;
+    }
+    const stateObj = states.find(
+      (s) => s.state_code === selectedStateCode || s.state_name.toLowerCase() === selectedStateCode.toLowerCase()
+    );
+    if (!stateObj) return;
+
+    let active = true;
+    (async () => {
+      try {
+        const distList = await getDistricts(stateObj.id);
+        if (!active) return;
+        setHierarchicalDistricts(distList);
+        setSelectedDistrictId('');
+        setHierarchicalStations([]);
+        setSelectedStationCode('');
+      } catch {
+        setHierarchicalDistricts([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [selectedStateCode, states]);
+
+  // When selected district changes in cascading dropdown, fetch stations
+  useEffect(() => {
+    if (!selectedDistrictId) {
+      setHierarchicalStations([]);
+      setSelectedStationCode('');
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const stList = await getPoliceStations(selectedDistrictId);
+        if (!active) return;
+        setHierarchicalStations(stList);
+        setSelectedStationCode('');
+      } catch {
+        setHierarchicalStations([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [selectedDistrictId]);
+
   const parsedSearch = useMemo(
     () => parseCombinedSearch(search, crimeTypes, districts),
     [search, crimeTypes, districts]
   );
 
   const activeParts: string[] = [];
+  if (filters.state) activeParts.push(`State: ${filters.state}`);
   if (filters.criminalName) activeParts.push(`Criminal: ${filters.criminalName}`);
   if (filters.crimeTypes?.length) activeParts.push(`Crime: ${filters.crimeTypes.join(' / ')}`);
   if (filters.districts?.length) activeParts.push(`District: ${filters.districts.join(' / ')}`);
@@ -161,17 +234,34 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
       setValidationError('Date From must be on or before Date To.');
       return;
     }
+
+    const chosenDistrictName = selectedDistrictId
+      ? hierarchicalDistricts.find((d) => d.id === selectedDistrictId)?.district_name
+      : undefined;
+    const chosenStationName = selectedStationCode
+      ? hierarchicalStations.find((s) => s.station_code === selectedStationCode)?.station_name
+      : undefined;
+
+    const mergedDistricts = [
+      ...parsedSearch.districts,
+      ...selectedDistricts,
+      ...(chosenDistrictName ? [chosenDistrictName] : []),
+    ];
+
+    const mergedStations = [
+      ...selectedStations,
+      ...(chosenStationName ? [chosenStationName] : []),
+    ];
+
     const next: NetworkFilterParams = {
       criminalName: parsedSearch.criminalName,
+      state: selectedStateCode || undefined,
       crimeTypes:
         parsedSearch.crimeTypes.length || selectedCrimeTypes.length
           ? Array.from(new Set([...parsedSearch.crimeTypes, ...selectedCrimeTypes]))
           : undefined,
-      districts:
-        parsedSearch.districts.length || selectedDistricts.length
-          ? Array.from(new Set([...parsedSearch.districts, ...selectedDistricts]))
-          : undefined,
-      policeStations: selectedStations.length ? [...selectedStations] : undefined,
+      districts: mergedDistricts.length ? Array.from(new Set(mergedDistricts)) : undefined,
+      policeStations: mergedStations.length ? Array.from(new Set(mergedStations)) : undefined,
       dateFrom: resolvedDateFrom || undefined,
       dateTo: resolvedDateTo || undefined,
     };
@@ -181,6 +271,11 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
   const handleClear = () => {
     setValidationError(null);
     setSearch('');
+    setSelectedStateCode('');
+    setSelectedDistrictId('');
+    setSelectedStationCode('');
+    setHierarchicalDistricts([]);
+    setHierarchicalStations([]);
     setSelectedCrimeTypes([]);
     setSelectedDistricts([]);
     setSelectedStations([]);
@@ -232,6 +327,71 @@ export const NetworkFilterPanel: React.FC<NetworkFilterPanelProps> = ({
             <RotateCcw className="w-3 h-3" />
             Clear Filters
           </button>
+        </div>
+      </div>
+
+      {/* Cascading Jurisdictional Hierarchy (State -> District -> Police Station) */}
+      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 p-2 rounded-btn">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+          <MapPin className="w-3.5 h-3.5 text-[var(--accent-teal)]" />
+          Jurisdiction Hierarchy:
+        </div>
+
+        {/* State / UT */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9.5px] uppercase font-semibold text-[var(--text-muted)]">State/UT:</span>
+          <select
+            value={selectedStateCode}
+            onChange={(e) => setSelectedStateCode(e.target.value)}
+            className="bg-[var(--bg-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-btn px-2 py-1 text-[11px] focus:outline-none focus:border-[var(--accent-blue)] min-w-[140px]"
+          >
+            <option value="">All States & UTs (National)</option>
+            {states.map((s) => (
+              <option key={s.id} value={s.state_code}>
+                {s.state_name} ({s.state_code})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* District */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9.5px] uppercase font-semibold text-[var(--text-muted)]">District:</span>
+          <select
+            value={selectedDistrictId}
+            onChange={(e) => setSelectedDistrictId(e.target.value)}
+            disabled={!selectedStateCode || hierarchicalDistricts.length === 0}
+            className="bg-[var(--bg-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-btn px-2 py-1 text-[11px] focus:outline-none focus:border-[var(--accent-blue)] min-w-[140px] disabled:opacity-50"
+          >
+            <option value="">
+              {!selectedStateCode ? 'Select State first' : hierarchicalDistricts.length === 0 ? 'No districts' : 'All Districts'}
+            </option>
+            {hierarchicalDistricts.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.district_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Police Station */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9.5px] uppercase font-semibold text-[var(--text-muted)]">Station:</span>
+          <select
+            value={selectedStationCode}
+            onChange={(e) => setSelectedStationCode(e.target.value)}
+            disabled={!selectedDistrictId || hierarchicalStations.length === 0}
+            className="bg-[var(--bg-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-btn px-2 py-1 text-[11px] focus:outline-none focus:border-[var(--accent-blue)] min-w-[160px] disabled:opacity-50"
+          >
+            <option value="">
+              {!selectedDistrictId ? 'Select District first' : hierarchicalStations.length === 0 ? 'No stations' : 'All Stations'}
+            </option>
+            {hierarchicalStations.map((st) => (
+              <option key={st.id} value={st.station_code}>
+                {st.station_name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

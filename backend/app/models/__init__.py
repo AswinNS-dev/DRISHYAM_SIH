@@ -54,6 +54,8 @@ from app.models.intel_entity import (
     NetworkAnalysisRun,
     NetworkMetric,
 )
+from app.models.geography import State, District, PoliceStation
+from app.models.ner import NERExtraction
 
 __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
@@ -73,5 +75,8 @@ __all__ = [
     "EntityRelationship", "IngestionRecord",
     "DataSource", "IngestionJob", "CaseEntityLink",
     "SuspiciousPattern", "IntelAnomaly", "NetworkAnalysisRun", "NetworkMetric",
+    "State", "District", "PoliceStation",
+    "NERExtraction",
 ]
+
 

@@ -2,7 +2,7 @@
     "model_name": "DRISHYAM District Risk & Forecast",
     "risk_algorithm": "RandomForest",
     "forecast_algorithm": "XGBoost",
-    "version": "20260907_100703",
+    "version": "20260907_190244",
     "risk_features": [
         "crime_count",
         "night_crime_ratio",
@@ -38,49 +38,49 @@
         "growth_rate",
         "momentum"
     ],
-    "training_rows": 283,
+    "training_rows": 285,
     "training_period": "2024-01-23 to 2026-09-17",
     "validation_period": "Chronological Holdout (20%)",
     "validation_status": "VALIDATED",
     "risk_metrics": {
-        "rmse": 1.6570773995697692,
-        "mae": 0.9789147383117972,
-        "r2": -0.3154595983526671
+        "rmse": 1.7627240118151395,
+        "mae": 1.0175044931545671,
+        "r2": -0.24787139864086116
     },
     "forecast_metrics": {
-        "rmse": 1.6264394360650511,
-        "mae": 0.9630343937662313,
-        "r2": -0.26726580980839243
+        "rmse": 1.7565430944915035,
+        "mae": 1.0170359669229294,
+        "r2": -0.2391355247807172
     },
     "risk_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.6570773995697692,
-            "mae": 0.9789147383117972,
-            "r2": -0.3154595983526671
+            "rmse": 1.7627240118151395,
+            "mae": 1.0175044931545671,
+            "r2": -0.24787139864086116
         },
         "baseline_metrics": {
-            "rmse": 1.6715084110434073,
-            "mae": 1.0144387517466233,
-            "r2": -0.33847128520283
+            "rmse": 1.7906826411538255,
+            "mae": 1.0450138504155124,
+            "r2": -0.2877703955500619
         },
-        "rmse_improvement_pct": 0.86,
-        "mae_improvement_pct": 3.5,
+        "rmse_improvement_pct": 1.56,
+        "mae_improvement_pct": 2.63,
         "outperforms_baseline": true
     },
     "forecast_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.6264394360650511,
-            "mae": 0.9630343937662313,
-            "r2": -0.26726580980839243
+            "rmse": 1.7565430944915035,
+            "mae": 1.0170359669229294,
+            "r2": -0.2391355247807172
         },
         "baseline_metrics": {
-            "rmse": 1.786891842317366,
-            "mae": 1.087719298245614,
-            "r2": -0.5296372751400766
+            "rmse": 1.8496087779795347,
+            "mae": 1.0701754385964912,
+            "r2": -0.37391841779975277
         },
-        "rmse_improvement_pct": 8.98,
-        "mae_improvement_pct": 11.46,
+        "rmse_improvement_pct": 5.03,
+        "mae_improvement_pct": 4.97,
         "outperforms_baseline": true
     },
-    "trained_on": "2026-09-07T10:07:03.961275+00:00"
+    "trained_on": "2026-09-07T19:02:44.253491+00:00"
 }

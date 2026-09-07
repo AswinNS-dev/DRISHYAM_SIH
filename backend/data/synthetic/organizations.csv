@@ -1,0 +1,5 @@
+name,org_type,description,address,district,risk_score
+Vanguard Logistics Ltd,front_business,Interstate freight carrier fronting illicit transit consignments,"G-12, Hosur Industrial Complex",Krishnagiri,0.88
+FinTech Global Solutions,syndicate,"Cyber fraud syndicate running mule accounts, crypto laundering and fake loans","Tower B, Cyberabad Tech Corridor",Hyderabad,0.94
+Apex Warehousing,front_business,Bonded warehouse operation used for contraband staging and Hawala clearing,"Plot 44, Pune Logistics Hub",Pune,0.82
+Delta Import-Export Corp,company,Cross-border shell entity facilitating forged trade bills and GST evasion,"Port Trust Road, Chennai",Chennai,0.76

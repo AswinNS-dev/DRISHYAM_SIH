@@ -1205,6 +1205,7 @@ export async function getNetworkCase(
 }
 
 export interface NetworkFilterParams {
+  state?: string;
   criminalName?: string;
   crimeTypes?: string[];
   districts?: string[];
@@ -1228,6 +1229,7 @@ export async function getFullNetworkGraph(
       min_risk: minRisk,
       provenance_filter: provenanceFilter,
       exclude_demo: excludeDemo,
+      state: filters?.state,
       criminal_name: filters?.criminalName,
       crime_type: filters?.crimeTypes?.length ? filters.crimeTypes.join(',') : undefined,
       district: filters?.districts?.length ? filters.districts.join(',') : undefined,
@@ -1675,7 +1677,7 @@ export interface CrimeCategoryRecord {
 export interface LocationSimpleRecord {
   id: string;
   district: string;
-  station: string;
+  station: string | null;
   pincode: string | null;
 }
 
@@ -3651,4 +3653,121 @@ export async function getFaceProviderInfo(): Promise<FaceProviderInfo> {
 export async function getFaceRecognitionStatus(): Promise<{ enabled: boolean; provider: string; threshold: number }> {
   return apiRequest('/face-recognition/status');
 }
+
+// ── Geographic Hierarchy (States, Districts, Police Stations) ──────────────
+
+export interface StateRecord {
+  id: string;
+  state_code: string;
+  state_name: string;
+  state_type: string;
+  created_at: string;
+}
+
+export interface DistrictRecord {
+  id: string;
+  state_id: string;
+  district_code: string;
+  district_name: string;
+  created_at: string;
+}
+
+export interface PoliceStationRecord {
+  id: string;
+  district_id: string;
+  station_code: string;
+  station_name: string;
+  latitude: number;
+  longitude: number;
+  created_at: string;
+}
+
+export async function getStates(): Promise<StateRecord[]> {
+  return apiRequest<StateRecord[]>('/geography/states');
+}
+
+export async function getDistricts(stateId: string): Promise<DistrictRecord[]> {
+  return apiRequest<DistrictRecord[]>(`/geography/states/${stateId}/districts`);
+}
+
+export async function getPoliceStations(districtId: string): Promise<PoliceStationRecord[]> {
+  return apiRequest<PoliceStationRecord[]>(`/geography/districts/${districtId}/stations`);
+}
+
+// ── Named Entity Recognition (NER) & Ingestion Intelligence ────────────────
+
+export interface NERExtractionRecord {
+  id: string;
+  record_id: string;
+  entity_type: string;
+  entity_text: string;
+  start_offset: number;
+  end_offset: number;
+  confidence: number;
+  engine: string;
+  normalized_ref?: string | null;
+  match_status: string;
+  matched_entity_type?: string | null;
+  matched_entity_id?: string | null;
+  review_status: 'pending' | 'confirmed' | 'rejected';
+  review_notes?: string | null;
+  reviewed_by_id?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+}
+
+export interface IngestionRecordItem {
+  id: string;
+  source_type: string;
+  source_name?: string | null;
+  external_ref?: string | null;
+  title?: string | null;
+  raw_text?: string | null;
+  processing_status: string;
+  record_status: string;
+  is_demo_derived: boolean;
+  ingested_at?: string | null;
+  created_at?: string | null;
+  extractions?: NERExtractionRecord[];
+}
+
+export async function processNER(recordId: string): Promise<{
+  record_id: string;
+  extractions_count: number;
+  status: string;
+  extractions: NERExtractionRecord[];
+}> {
+  return apiRequest(`/ner/process/${recordId}`, { method: 'POST' });
+}
+
+export async function backfillNER(limit = 100): Promise<{
+  processed_count: number;
+  status: string;
+}> {
+  return apiRequest(`/ner/backfill?limit=${limit}`, { method: 'POST' });
+}
+
+export async function getRecordNER(recordId: string): Promise<NERExtractionRecord[]> {
+  return apiRequest<NERExtractionRecord[]>(`/ner/records/${recordId}`);
+}
+
+export async function getPendingNERExtractions(limit = 100): Promise<NERExtractionRecord[]> {
+  return apiRequest<NERExtractionRecord[]>(`/ner/extractions/pending?limit=${limit}`);
+}
+
+export async function reviewNERExtraction(
+  id: string,
+  decision: 'confirmed' | 'rejected',
+  notes?: string
+): Promise<{ id: string; review_status: string; message: string }> {
+  return apiRequest(`/ner/extractions/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ decision, notes: notes || null }),
+  });
+}
+
+export async function listRawIngestionRecords(limit = 50): Promise<IngestionRecordItem[]> {
+  return apiRequest<IngestionRecordItem[]>(`/ingestion/records?limit=${limit}`);
+}
+
 

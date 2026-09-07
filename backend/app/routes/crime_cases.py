@@ -93,7 +93,7 @@ class LocationSimpleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     district: str
-    station: str
+    station: str | None = None
     pincode: str | None = None
 
 

@@ -57,6 +57,18 @@ const GEOMETRIES: Record<string, { outer: THREE.BufferGeometry; inner: THREE.Buf
     outer: new THREE.IcosahedronGeometry(6.0, 0),
     inner: new THREE.IcosahedronGeometry(3.2, 0),
   },
+  vehicle: {
+    outer: new THREE.BoxGeometry(9.0, 4.5, 5.0),
+    inner: new THREE.BoxGeometry(5.0, 2.5, 3.0),
+  },
+  gang: {
+    outer: new THREE.DodecahedronGeometry(7.5, 0),
+    inner: new THREE.DodecahedronGeometry(4.0, 0),
+  },
+  organization: {
+    outer: new THREE.DodecahedronGeometry(7.5, 0),
+    inner: new THREE.DodecahedronGeometry(4.0, 0),
+  },
   default: {
     outer: new THREE.SphereGeometry(5.5, 16, 16),
     inner: new THREE.SphereGeometry(3.0, 12, 12),
@@ -129,6 +141,18 @@ const MATERIALS: Record<string, { outer: THREE.Material; inner: THREE.Material }
   officer: {
     outer: createGlassMaterial(0x14b8a6),
     inner: createCoreMaterial(0x5eead4),
+  },
+  vehicle: {
+    outer: createGlassMaterial(0x8b5cf6),
+    inner: createCoreMaterial(0xc084fc),
+  },
+  gang: {
+    outer: createGlassMaterial(0xd946ef),
+    inner: createCoreMaterial(0xf0abfc),
+  },
+  organization: {
+    outer: createGlassMaterial(0xd946ef),
+    inner: createCoreMaterial(0xf0abfc),
   },
   default: {
     outer: createGlassMaterial(0x8b5cf6),
@@ -393,6 +417,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
   // Color matching for link provenance & intelligence sources
   const getLinkColor = (link: GraphLink) => {
+    if (link.provenance === 'NER_EXTRACTED' || link.provenance?.includes('NER')) {
+      return isLight ? 'rgba(234, 88, 12, 0.95)' : 'rgba(249, 115, 22, 0.95)';
+    }
     const relType = (link.relationship_type || link.relationship || '').toUpperCase();
     if (relType === 'COMMUNICATION' || relType.includes('CDR') || relType.includes('CALL')) {
       return isLight ? 'rgba(8, 145, 178, 0.85)' : 'rgba(6, 182, 212, 0.85)';
@@ -709,6 +736,10 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
                   <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
                     <span className="w-3.5 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
                     <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
+                    <span className="w-3.5 h-1 border-t-2 border-dashed border-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                    <span className="text-orange-400 font-semibold">NER Candidate Lead (Under Review)</span>
                   </div>
                   <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
                     <span className="w-3.5 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />

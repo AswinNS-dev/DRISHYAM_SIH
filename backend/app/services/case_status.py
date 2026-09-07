@@ -36,6 +36,7 @@ _LEGACY_TO_CANONICAL: dict[str, str] = {
     "investigating": STATUS_UNDER_INVESTIGATION,
     "evidence collected": STATUS_UNDER_INVESTIGATION,
     "charge sheet filed": STATUS_CHARGESHEETED,
+    "appealed": STATUS_UNDER_INVESTIGATION,
     "closed": STATUS_CLOSED,
     # Already-canonical values map to themselves
     STATUS_ACTIVE: STATUS_ACTIVE,
@@ -178,5 +179,6 @@ def status_display_label(status: str | None) -> str:
         "investigating": "Investigating",
         "evidence collected": "Evidence Collected",
         "charge sheet filed": "Charge Sheet Filed",
+        "appealed": "Appealed",
     }
     return labels.get((status or "").lower(), status or "unknown")
