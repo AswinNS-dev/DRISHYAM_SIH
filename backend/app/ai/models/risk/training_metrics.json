@@ -1,8 +1,8 @@
 {
     "risk": {
-        "rmse": 1.6666254509401088,
-        "mae": 0.990134182424043,
-        "r2": -0.3306625831908834
+        "rmse": 1.6570773995697692,
+        "mae": 0.9789147383117972,
+        "r2": -0.3154595983526671
     },
     "forecast": {
         "rmse": 1.6264394360650511,
@@ -11,17 +11,17 @@
     },
     "risk_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.6666254509401088,
-            "mae": 0.990134182424043,
-            "r2": -0.3306625831908834
+            "rmse": 1.6570773995697692,
+            "mae": 0.9789147383117972,
+            "r2": -0.3154595983526671
         },
         "baseline_metrics": {
             "rmse": 1.6715084110434073,
             "mae": 1.0144387517466233,
             "r2": -0.33847128520283
         },
-        "rmse_improvement_pct": 0.29,
-        "mae_improvement_pct": 2.4,
+        "rmse_improvement_pct": 0.86,
+        "mae_improvement_pct": 3.5,
         "outperforms_baseline": true
     },
     "forecast_baseline_comparison": {

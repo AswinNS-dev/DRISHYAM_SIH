@@ -2,7 +2,7 @@
     "model_name": "SAKSHA District Risk & Forecast",
     "risk_algorithm": "RandomForest",
     "forecast_algorithm": "XGBoost",
-    "version": "20260907_094352",
+    "version": "20260907_100703",
     "risk_features": [
         "crime_count",
         "night_crime_ratio",
@@ -43,9 +43,9 @@
     "validation_period": "Chronological Holdout (20%)",
     "validation_status": "VALIDATED",
     "risk_metrics": {
-        "rmse": 1.6666254509401088,
-        "mae": 0.990134182424043,
-        "r2": -0.3306625831908834
+        "rmse": 1.6570773995697692,
+        "mae": 0.9789147383117972,
+        "r2": -0.3154595983526671
     },
     "forecast_metrics": {
         "rmse": 1.6264394360650511,
@@ -54,17 +54,17 @@
     },
     "risk_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.6666254509401088,
-            "mae": 0.990134182424043,
-            "r2": -0.3306625831908834
+            "rmse": 1.6570773995697692,
+            "mae": 0.9789147383117972,
+            "r2": -0.3154595983526671
         },
         "baseline_metrics": {
             "rmse": 1.6715084110434073,
             "mae": 1.0144387517466233,
             "r2": -0.33847128520283
         },
-        "rmse_improvement_pct": 0.29,
-        "mae_improvement_pct": 2.4,
+        "rmse_improvement_pct": 0.86,
+        "mae_improvement_pct": 3.5,
         "outperforms_baseline": true
     },
     "forecast_baseline_comparison": {
@@ -82,5 +82,5 @@
         "mae_improvement_pct": 11.46,
         "outperforms_baseline": true
     },
-    "trained_on": "2026-09-07T09:43:52.041363+00:00"
+    "trained_on": "2026-09-07T10:07:03.961275+00:00"
 }
