@@ -23,6 +23,10 @@ interface GraphExplorerToolbarProps {
   isNeo4jBacked: boolean;
   onExportMatrix: () => void;
   onNeo4jSync: () => void;
+  entityCounts?: Record<string, number>;
+  sourceVisibility?: Record<string, boolean>;
+  onToggleSourceVisibility?: (category: string) => void;
+  onResetSourceVisibility?: () => void;
 }
 
 export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
@@ -35,6 +39,10 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
   isNeo4jBacked,
   onExportMatrix,
   onNeo4jSync,
+  entityCounts,
+  sourceVisibility,
+  onToggleSourceVisibility,
+  onResetSourceVisibility,
 }) => {
   const views: { id: NetworkWorkspaceView; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: '3d_explorer', label: '3D Graph Explorer', icon: Share2 },
@@ -45,6 +53,77 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
     { id: 'timeline', label: 'Timeline View', icon: Calendar },
     { id: 'ai_insights', label: 'AI Insights', icon: Sparkles },
   ];
+
+  const intelligenceSources = [
+    {
+      id: 'suspect',
+      label: 'Suspects',
+      color: '#EF4444',
+      badgeClass: 'text-red-400 bg-red-500/10 border-red-500/30',
+      activeClass: 'border-red-500/60 bg-red-500/15 shadow-[0_0_8px_rgba(239,68,68,0.3)]',
+      renderIcon: () => <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]" />,
+    },
+    {
+      id: 'offender',
+      label: 'Offenders',
+      color: '#F97316',
+      badgeClass: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
+      activeClass: 'border-orange-500/60 bg-orange-500/15 shadow-[0_0_8px_rgba(249,115,22,0.3)]',
+      renderIcon: () => <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)]" />,
+    },
+    {
+      id: 'cdr',
+      label: 'CDRs',
+      color: '#06B6D4',
+      badgeClass: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+      activeClass: 'border-cyan-500/60 bg-cyan-500/15 shadow-[0_0_8px_rgba(6,182,212,0.3)]',
+      renderIcon: () => (
+        <svg className="w-3 h-3 text-[#06B6D4]" viewBox="0 0 16 16" fill="currentColor">
+          <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
+        </svg>
+      ),
+    },
+    {
+      id: 'financial_transaction',
+      label: 'Financial',
+      color: '#F59E0B',
+      badgeClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+      activeClass: 'border-amber-500/60 bg-amber-500/15 shadow-[0_0_8px_rgba(245,158,11,0.3)]',
+      renderIcon: () => (
+        <svg className="w-3 h-3 text-[#F59E0B]" viewBox="0 0 16 16" fill="currentColor">
+          <polygon points="8,1 15,8 8,15 1,8" />
+        </svg>
+      ),
+    },
+    {
+      id: 'surveillance_report',
+      label: 'Surveillance',
+      color: '#A855F7',
+      badgeClass: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
+      activeClass: 'border-purple-500/60 bg-purple-500/15 shadow-[0_0_8px_rgba(168,85,247,0.3)]',
+      renderIcon: () => (
+        <svg className="w-3 h-3 text-[#A855F7]" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+        </svg>
+      ),
+    },
+    {
+      id: 'social_media_intel',
+      label: 'Social Intel',
+      color: '#3B82F6',
+      badgeClass: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+      activeClass: 'border-blue-500/60 bg-blue-500/15 shadow-[0_0_8px_rgba(59,130,246,0.3)]',
+      renderIcon: () => (
+        <svg className="w-3 h-3 text-[#3B82F6]" viewBox="0 0 16 16" fill="currentColor">
+          <polygon points="5,1.5 11,1.5 14.5,5 14.5,11 11,14.5 5,14.5 1.5,11 1.5,5" />
+        </svg>
+      ),
+    },
+  ];
+
+  const anySourceHidden = sourceVisibility
+    ? intelligenceSources.some((s) => sourceVisibility[s.id] === false)
+    : false;
 
   return (
     <div className="flex flex-col gap-3 bg-[var(--bg-secondary)] p-3 rounded-card border border-[var(--border-secondary)] shadow-lg font-mono">
@@ -105,6 +184,56 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
         </div>
       </div>
 
+      {/* Middle Multi-Source Visibility Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border-primary)]">
+        <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] uppercase font-bold">
+          <span>Sources:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {intelligenceSources.map((source) => {
+            const isVisible = sourceVisibility ? sourceVisibility[source.id] !== false : true;
+            const count = entityCounts ? entityCounts[source.id] ?? 0 : null;
+
+            return (
+              <button
+                key={source.id}
+                onClick={() => onToggleSourceVisibility?.(source.id)}
+                title={`Toggle ${source.label} visibility in 3D network`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-btn text-[10px] font-mono border transition-all cursor-pointer ${
+                  isVisible
+                    ? source.activeClass
+                    : 'opacity-40 border-border-color bg-[var(--bg-primary)]/40 line-through text-[var(--text-disabled)]'
+                }`}
+              >
+                {source.renderIcon()}
+                <span className={isVisible ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-disabled)]'}>
+                  {source.label}
+                </span>
+                {count !== null && (
+                  <span
+                    className={`ml-0.5 px-1 py-0.2 rounded text-[9px] font-bold ${
+                      isVisible ? source.badgeClass : 'bg-[var(--bg-tertiary)] text-[var(--text-disabled)]'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {anySourceHidden && onResetSourceVisibility && (
+            <button
+              onClick={onResetSourceVisibility}
+              className="text-[9px] px-2 py-0.5 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              Show All
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Bottom Filter & Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-primary)] text-[11px]">
         {/* Category Filters */}
@@ -120,6 +249,10 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
             <option value="all">All Categories</option>
             <option value="suspect">Suspects (At Large)</option>
             <option value="offender">Known Offenders</option>
+            <option value="cdr">Call Detail Records (CDR)</option>
+            <option value="financial_transaction">Financial Transactions</option>
+            <option value="surveillance_report">Surveillance Reports</option>
+            <option value="social_media_intel">Social Media Intel</option>
             <option value="case">Cases / FIRs</option>
             <option value="location">Jurisdiction Hotspots</option>
             <option value="victim">Victims & Complainants</option>
@@ -145,3 +278,4 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
 };
 
 export default GraphExplorerToolbar;
+

@@ -216,3 +216,34 @@ export function computeFocusSubgraph<TNode extends GraphEntityLike, TLink extend
     ),
   };
 }
+
+/**
+ * Multi-source node search matcher across all 6 intelligence entity types.
+ * Supports phone numbers (CDR), transaction IDs, report IDs, social handles,
+ * suspect/offender names, and detail keywords.
+ */
+export function matchesNodeSearch(
+  node: {
+    id?: string;
+    name?: string;
+    phone?: string | null;
+    details?: string;
+    district?: string | null;
+    status?: string | null;
+    category?: string;
+    gangAffiliation?: string | null;
+  },
+  search: string
+): boolean {
+  if (!search || !search.trim()) return true;
+  const term = search.trim().toLowerCase();
+  if (node.name?.toLowerCase().includes(term)) return true;
+  if (node.phone?.toLowerCase().includes(term)) return true;
+  if (node.id?.toLowerCase().includes(term)) return true;
+  if (node.details?.toLowerCase().includes(term)) return true;
+  if (node.district?.toLowerCase().includes(term)) return true;
+  if (node.status?.toLowerCase().includes(term)) return true;
+  if (node.category?.toLowerCase().includes(term)) return true;
+  if (node.gangAffiliation?.toLowerCase().includes(term)) return true;
+  return false;
+}

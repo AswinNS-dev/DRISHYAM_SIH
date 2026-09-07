@@ -23,7 +23,11 @@ from sqlalchemy import or_
 from app.models.crime import CrimeCase
 from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
+from app.models.evidence import Evidence
+from app.models.identity import IdentityIdentifier
+from app.models.intervention import Intervention
 from app.models.location import Location
+from app.models.notification import Notification
 from app.models.officer import Officer
 from app.models.victim import Victim
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
@@ -606,11 +610,381 @@ def _build_sql_graph(
                 isSeed=c_is_seed,
             )
 
+    # -------------------------------------------------------------
+    # Multi-Source Criminal Intelligence Layer (Real DB records only)
+    # -------------------------------------------------------------
+    # 1. CALL DETAIL RECORDS (CDRs) / Communication Intelligence
+    # Derives from identity_identifiers (phone telemetry) linked to persons in the network
+    person_ids_in_graph = {
+        n.id.replace("criminal-", ""): n.id
+        for n in nodes_map.values()
+        if n.category in (NetworkNodeCategory.SUSPECT, NetworkNodeCategory.OFFENDER)
+    }
+    victim_ids_in_graph = {
+        n.id.replace("victim-", ""): n.id
+        for n in nodes_map.values()
+        if n.category == NetworkNodeCategory.VICTIM
+    }
+    all_target_person_ids = set(person_ids_in_graph.keys()) | set(victim_ids_in_graph.keys())
+
+    if all_target_person_ids:
+        import uuid as _uuid
+        target_uuids = []
+        for pid in all_target_person_ids:
+            try:
+                target_uuids.append(_uuid.UUID(pid))
+            except Exception:
+                continue
+
+        if target_uuids:
+            phone_identifiers = (
+                db.query(IdentityIdentifier)
+                .filter(
+                    IdentityIdentifier.identifier_type == "phone",
+                    IdentityIdentifier.entity_id.in_(target_uuids),
+                )
+                .all()
+            )
+            for ident in phone_identifiers:
+                entity_uuid_str = str(ident.entity_id)
+                person_node_id = person_ids_in_graph.get(entity_uuid_str) or victim_ids_in_graph.get(entity_uuid_str)
+                if not person_node_id or person_node_id not in nodes_map:
+                    continue
+
+                parent_node = nodes_map[person_node_id]
+                cdr_node_id = f"cdr-{ident.id}"
+                disp_val = ident.display_value or "TELECOM"
+
+                if cdr_node_id not in nodes_map:
+                    obs_date = ident.observed_at.isoformat() if ident.observed_at else (
+                        ident.created_at.isoformat() if ident.created_at else None
+                    )
+                    nodes_map[cdr_node_id] = NetworkNode(
+                        id=cdr_node_id,
+                        name=f"CDR #{disp_val}",
+                        category=NetworkNodeCategory.CDR,
+                        riskScore=45.0,
+                        details=f"Call Detail Record ({disp_val}) registered in telemetry. Source: {ident.source_label or 'telecom_intercept'}",
+                        casesCount=1,
+                        phone=disp_val,
+                        date=obs_date,
+                        isSeed=parent_node.isSeed,
+                        extra={
+                            "phone": disp_val,
+                            "source_label": ident.source_label,
+                            "observed_at": obs_date,
+                            "entity_type": ident.entity_type,
+                            "hash": ident.value_hash[:12] if ident.value_hash else None,
+                        },
+                    )
+
+                edges_list.append(NetworkEdge(
+                    source=person_node_id,
+                    target=cdr_node_id,
+                    relationship="Communication / CDR Link",
+                    relationship_type="COMMUNICATION",
+                    provenance="DEMO_SEED" if parent_node.isSeed else "DIRECT_DATABASE",
+                    verification_status="VERIFIED",
+                    confidence=0.95,
+                    confidence_level="HIGH",
+                    evidence=[{
+                        "record_type": "cdr_telemetry",
+                        "record_id": str(ident.id),
+                        "details": f"Phone identifier {disp_val} attributed to subject ({parent_node.name})",
+                        "timestamp": ident.observed_at.isoformat() if ident.observed_at else None,
+                    }],
+                    is_demo_derived=parent_node.isSeed,
+                ))
+
+    # 2. FINANCIAL TRANSACTION RECORDS
+    # Derives from real digital forensic evidence items containing transaction records
+    case_uuids_in_graph = {}
+    for fir in firs:
+        if fir.crime_case_id:
+            case_uuids_in_graph[fir.crime_case_id] = (f"case-{fir.id}", fir)
+
+    if case_uuids_in_graph:
+        digital_evidences = (
+            db.query(Evidence)
+            .filter(
+                Evidence.case_id.in_(list(case_uuids_in_graph.keys())),
+                Evidence.evidence_type == "digital",
+            )
+            .all()
+        )
+        for ev in digital_evidences:
+            case_info = case_uuids_in_graph.get(ev.case_id)
+            if not case_info:
+                continue
+            case_node_id, fir = case_info
+            fin_node_id = f"financial-{ev.id}"
+            fin_title = ev.title.replace("Digital Forensics — ", "").replace("Digital Evidence — ", "")
+
+            if fin_node_id not in nodes_map:
+                ev_is_seed = (ev.dataset_provenance == "demo")
+                nodes_map[fin_node_id] = NetworkNode(
+                    id=fin_node_id,
+                    name=f"TXN #{fin_title}",
+                    category=NetworkNodeCategory.FINANCIAL_TRANSACTION,
+                    riskScore=65.0,
+                    details=ev.description or "Digital transaction record and financial ledger audit",
+                    casesCount=1,
+                    date=ev.created_at.isoformat() if ev.created_at else None,
+                    isSeed=ev_is_seed,
+                    extra={
+                        "evidence_id": str(ev.id),
+                        "status": ev.status,
+                        "storage_path": ev.storage_path,
+                        "evidence_type": ev.evidence_type,
+                        "created_by": ev.created_by,
+                    },
+                )
+
+            # Edge from Financial Transaction to Case
+            edges_list.append(NetworkEdge(
+                source=fin_node_id,
+                target=case_node_id,
+                relationship="Financial Activity Record",
+                relationship_type="FINANCIAL",
+                provenance="DEMO_SEED" if (ev.dataset_provenance == "demo") else "DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=0.92,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "financial_forensics",
+                    "record_id": str(ev.id),
+                    "details": ev.description or "Transaction records attached to case dossier",
+                    "timestamp": ev.created_at.isoformat() if ev.created_at else None,
+                }],
+                is_demo_derived=(ev.dataset_provenance == "demo"),
+            ))
+
+            # Edge from accused persons in the case to the Financial Transaction
+            for link in fir.criminal_links:
+                if link.criminal_id:
+                    crim_node_id = f"criminal-{link.criminal_id}"
+                    if crim_node_id in nodes_map:
+                        edges_list.append(NetworkEdge(
+                            source=crim_node_id,
+                            target=fin_node_id,
+                            relationship="Financial Activity Linked",
+                            relationship_type="FINANCIAL",
+                            provenance="DEMO_SEED" if (ev.dataset_provenance == "demo") else "DIRECT_DATABASE",
+                            verification_status="VERIFIED",
+                            confidence=0.88,
+                            confidence_level="HIGH",
+                            evidence=[{
+                                "record_type": "suspect_financial_link",
+                                "record_id": str(ev.id),
+                                "details": f"Financial transaction evidence linked to accused in FIR #{fir.fir_number}",
+                                "timestamp": ev.created_at.isoformat() if ev.created_at else None,
+                            }],
+                            is_demo_derived=(ev.dataset_provenance == "demo"),
+                        ))
+
+    # 3. SURVEILLANCE REPORTS
+    # Derives from notifications and interventions containing real surveillance telemetry
+    surveillance_notifications = (
+        db.query(Notification)
+        .filter(
+            or_(
+                Notification.category.ilike("%surveillance%"),
+                Notification.notification_type.ilike("%surveillance%"),
+                Notification.subject.ilike("%surveillance%"),
+                Notification.title.ilike("%surveillance%"),
+            )
+        )
+        .all()
+    )
+    for notif in surveillance_notifications:
+        surv_node_id = f"surveillance-{notif.id}"
+        sr_label = notif.related_fir_number or notif.related_case_number or f"SR-{str(notif.id)[:6].upper()}"
+        if surv_node_id not in nodes_map:
+            nodes_map[surv_node_id] = NetworkNode(
+                id=surv_node_id,
+                name=f"SR #{sr_label}",
+                category=NetworkNodeCategory.SURVEILLANCE_REPORT,
+                riskScore=80.0 if notif.priority == "critical" else 65.0,
+                details=notif.message or notif.title,
+                casesCount=1,
+                date=notif.created_at.isoformat() if notif.created_at else None,
+                isSeed=True,
+                extra={
+                    "notification_id": str(notif.id),
+                    "subject": notif.subject,
+                    "title": notif.title,
+                    "priority": notif.priority,
+                    "related_case": notif.related_case_number,
+                    "related_fir": notif.related_fir_number,
+                },
+            )
+
+        # Link surveillance report to relevant case in graph if present
+        if notif.related_case_number:
+            matching_case_nodes = [
+                n.id for n in nodes_map.values()
+                if n.category == NetworkNodeCategory.CASE and notif.related_case_number in n.name or (n.details and notif.related_case_number in n.details)
+            ]
+            for c_nid in matching_case_nodes:
+                edges_list.append(NetworkEdge(
+                    source=surv_node_id,
+                    target=c_nid,
+                    relationship="Observed in Surveillance",
+                    relationship_type="SURVEILLANCE",
+                    provenance="DIRECT_DATABASE",
+                    verification_status="VERIFIED",
+                    confidence=0.95,
+                    confidence_level="HIGH",
+                    evidence=[{
+                        "record_type": "surveillance_log",
+                        "record_id": str(notif.id),
+                        "details": notif.message,
+                        "timestamp": notif.created_at.isoformat() if notif.created_at else None,
+                    }],
+                    is_demo_derived=True,
+                ))
+
+    # Surveillance Interventions (ANPR / Smart CCTV Rollout)
+    surveillance_interventions = (
+        db.query(Intervention)
+        .filter(
+            or_(
+                Intervention.intervention_type.ilike("%surveillance%"),
+                Intervention.pattern_type.ilike("%surveillance%"),
+                Intervention.title.ilike("%surveillance%"),
+                Intervention.title.ilike("%cctv%"),
+            )
+        )
+        .all()
+    )
+    for itv in surveillance_interventions:
+        itv_node_id = f"surveillance-itv-{itv.id}"
+        if itv_node_id not in nodes_map:
+            nodes_map[itv_node_id] = NetworkNode(
+                id=itv_node_id,
+                name=f"SR #{itv.title[:20]}",
+                category=NetworkNodeCategory.SURVEILLANCE_REPORT,
+                riskScore=60.0,
+                details=itv.description or itv.title,
+                casesCount=1,
+                district=itv.district,
+                date=itv.started_at.isoformat() if itv.started_at else None,
+                isSeed=True,
+                extra={
+                    "intervention_id": str(itv.id),
+                    "pattern_type": itv.pattern_type,
+                    "workflow_stage": itv.workflow_stage,
+                    "district": itv.district,
+                },
+            )
+        # Link to district location node if in graph
+        if itv.district:
+            for l_nid, l_node in list(nodes_map.items()):
+                if l_node.category == NetworkNodeCategory.LOCATION and l_node.district and itv.district.lower() in l_node.district.lower():
+                    edges_list.append(NetworkEdge(
+                        source=itv_node_id,
+                        target=l_nid,
+                        relationship="Jurisdiction Surveillance Grid",
+                        relationship_type="SURVEILLANCE",
+                        provenance="DIRECT_DATABASE",
+                        verification_status="VERIFIED",
+                        confidence=0.90,
+                        confidence_level="HIGH",
+                        evidence=[{
+                            "record_type": "cctv_deployment",
+                            "record_id": str(itv.id),
+                            "details": itv.description,
+                        }],
+                        is_demo_derived=True,
+                    ))
+
+    # 4. SOCIAL MEDIA INTELLIGENCE
+    # Derives from crime cases and FIRs with social media threats, stalking, or cyber fraud MO
+    for fir in firs:
+        case = fir.crime_case
+        if not case:
+            continue
+        mo_text = f"{case.mo_tags or ''} {case.description or ''}".lower()
+        if "social media" in mo_text or "cyber stalking" in mo_text:
+            soc_node_id = f"social-{case.id}"
+            if soc_node_id not in nodes_map:
+                nodes_map[soc_node_id] = NetworkNode(
+                    id=soc_node_id,
+                    name=f"SM #{case.case_number}",
+                    category=NetworkNodeCategory.SOCIAL_MEDIA_INTEL,
+                    riskScore=72.0,
+                    details=f"Social Media Intelligence: {case.description or case.mo_tags}",
+                    casesCount=1,
+                    date=case.occurred_at.isoformat() if case.occurred_at else None,
+                    isSeed=(case.dataset_provenance == "demo"),
+                    extra={
+                        "case_number": case.case_number,
+                        "mo_tags": case.mo_tags,
+                        "category": case.category.name if case.category else "Cyber",
+                    },
+                )
+
+            # Edge to Case
+            edges_list.append(NetworkEdge(
+                source=soc_node_id,
+                target=f"case-{fir.id}",
+                relationship="Social Media Threat Lead",
+                relationship_type="SOCIAL_DIGITAL",
+                provenance="DEMO_SEED" if (case.dataset_provenance == "demo") else "DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=0.91,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "social_media_evidence",
+                    "record_id": str(case.id),
+                    "details": f"Social media telemetry recorded under case {case.case_number}",
+                    "timestamp": case.occurred_at.isoformat() if case.occurred_at else None,
+                }],
+                is_demo_derived=(case.dataset_provenance == "demo"),
+            ))
+
+            # Edge to Accused Criminals
+            for clink in fir.criminal_links:
+                if clink.criminal_id:
+                    c_nid = f"criminal-{clink.criminal_id}"
+                    if c_nid in nodes_map:
+                        edges_list.append(NetworkEdge(
+                            source=c_nid,
+                            target=soc_node_id,
+                            relationship="Digital Footprint / Social Channel",
+                            relationship_type="SOCIAL_DIGITAL",
+                            provenance="DEMO_SEED" if (case.dataset_provenance == "demo") else "DIRECT_DATABASE",
+                            verification_status="VERIFIED",
+                            confidence=0.89,
+                            confidence_level="HIGH",
+                            evidence=[{
+                                "record_type": "social_suspect_link",
+                                "record_id": str(case.id),
+                                "details": f"Accused persona mapped to online social channel under case {case.case_number}",
+                            }],
+                            is_demo_derived=(case.dataset_provenance == "demo"),
+                        ))
+
     # Apply Category & Risk filters
+    category_priority = {
+        NetworkNodeCategory.SUSPECT: 0,
+        NetworkNodeCategory.OFFENDER: 0,
+        NetworkNodeCategory.SURVEILLANCE_REPORT: 1,
+        NetworkNodeCategory.SOCIAL_MEDIA_INTEL: 1,
+        NetworkNodeCategory.FINANCIAL_TRANSACTION: 1,
+        NetworkNodeCategory.CDR: 1,
+        NetworkNodeCategory.VICTIM: 2,
+        NetworkNodeCategory.OFFICER: 2,
+        NetworkNodeCategory.CASE: 3,
+        NetworkNodeCategory.LOCATION: 4,
+    }
+
     filtered_nodes = [
         n for n in nodes_map.values()
         if (not category_filter or n.category.value == category_filter) and n.riskScore >= min_risk
     ]
+    filtered_nodes.sort(key=lambda n: (category_priority.get(n.category, 5), -n.riskScore))
+
     valid_node_ids = {n.id for n in filtered_nodes}
     filtered_edges = [
         e for e in edges_list
@@ -634,7 +1008,7 @@ def _graph_response(
     summary = {
         "total_nodes": len(nodes),
         "total_edges": len(edges),
-        "verified_relationships": sum(1 for e in edges if e.verification_status == "VERIFIED" or e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM")),
+        "verified_relationships": sum(1 for e in edges if e.verification_status == "VERIFIED" or e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM", "COMMUNICATION", "FINANCIAL", "SURVEILLANCE", "SOCIAL_DIGITAL")),
         "analytical_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE") or e.provenance == "ANALYTICAL_INFERENCE"),
         "potential_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE")),
         "demo_relationships": sum(1 for e in edges if e.is_demo_derived or e.provenance in ("DEMO_SEED", "MIXED")),
@@ -650,7 +1024,7 @@ def _graph_response(
     if provenance_filter:
         p_filter = provenance_filter.upper()
         if p_filter == "VERIFIED":
-            edges = [e for e in edges if e.verification_status == "VERIFIED" or (e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM") and e.relationship_type not in ("SHARED_CASE", "GANG_ASSOCIATE"))]
+            edges = [e for e in edges if e.verification_status == "VERIFIED" or (e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM", "COMMUNICATION", "FINANCIAL", "SURVEILLANCE", "SOCIAL_DIGITAL") and e.relationship_type not in ("SHARED_CASE", "GANG_ASSOCIATE"))]
         elif p_filter in ("POTENTIAL", "ANALYTICAL_INFERENCE"):
             edges = [e for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE") or e.provenance == "ANALYTICAL_INFERENCE"]
         elif p_filter in ("DIRECT_DATABASE", "DEMO_SEED", "MIXED", "UNKNOWN", "UNVERIFIED", "DEMO"):
@@ -715,7 +1089,7 @@ def get_full_network_graph(
     min_risk: float = 0.0,
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
-    limit: int = 500,
+    limit: int = 1500,
     criminal_name: str | None = None,
     crime_type: str | None = None,
     district: str | None = None,
