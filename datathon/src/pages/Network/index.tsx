@@ -14,7 +14,21 @@ import AIGraphInsightsModal from '../../components/network/AIGraphInsightsModal'
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
-import { Network as NetIcon, Layers, Database, SearchX, AlertTriangle, Focus, X } from 'lucide-react';
+import {
+  Network as NetIcon,
+  Layers,
+  Database,
+  SearchX,
+  AlertTriangle,
+  Focus,
+  X,
+  ShieldAlert,
+  Phone,
+  CreditCard,
+  Video,
+  Globe,
+  Users,
+} from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { hasActiveNetworkFilters, buildNetworkPathHighlight, computeFocusSubgraph } from '../../utils/networkSearch';
 
@@ -256,12 +270,155 @@ export const NetworkPageWorkspace: React.FC = () => {
     return buildNetworkPathHighlight(connectionPath);
   }, [highlightOn, connectionPath]);
 
-  // Focus mode: restrict the rendered subgraph to N hops around a chosen entity.
+  // Multi-source intelligence visibility toggles
+  const [sourceVisibility, setSourceVisibility] = useState<Record<string, boolean>>({
+    suspect: true,
+    offender: true,
+    cdr: true,
+    financial_transaction: true,
+    surveillance_report: true,
+    social_media_intel: true,
+    case: true,
+    location: true,
+    victim: true,
+    officer: true,
+  });
+
+  const handleToggleSourceVisibility = (cat: string) => {
+    setSourceVisibility((prev) => ({
+      ...prev,
+      [cat]: prev[cat] === false ? true : false,
+    }));
+  };
+
+  const handleResetSourceVisibility = () => {
+    setSourceVisibility({
+      suspect: true,
+      offender: true,
+      cdr: true,
+      financial_transaction: true,
+      surveillance_report: true,
+      social_media_intel: true,
+      case: true,
+      location: true,
+      victim: true,
+      officer: true,
+    });
+  };
+
+  // Dynamic entity type counts
+  const entityCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      suspect: 0,
+      offender: 0,
+      cdr: 0,
+      financial_transaction: 0,
+      surveillance_report: 0,
+      social_media_intel: 0,
+      case: 0,
+      location: 0,
+      victim: 0,
+      officer: 0,
+    };
+    (graphData?.nodes || []).forEach((n) => {
+      counts[n.category] = (counts[n.category] || 0) + 1;
+    });
+    return counts;
+  }, [graphData]);
+
+  // Dynamic Intelligence Breakdown & Summary Stats
+  const summaryStats = useMemo(() => {
+    const nodes = graphData?.nodes || [];
+    const links = graphData?.links || [];
+
+    // 1. Total Suspects
+    const totalSuspects = nodes.filter((n) => n.category === 'suspect').length;
+
+    // Fast category lookup by node ID
+    const nodeCategoryMap = new Map<string, string>();
+    nodes.forEach((n) => nodeCategoryMap.set(n.id, n.category));
+
+    const getSourceId = (s: any) => (typeof s === 'object' && s !== null ? s.id : s);
+    const getTargetId = (t: any) => (typeof t === 'object' && t !== null ? t.id : t);
+
+    // 2. Total CDR Links
+    const totalCdrLinks = links.filter((l) => {
+      if (l.relationship_type === 'COMMUNICATION') return true;
+      const sCat = nodeCategoryMap.get(getSourceId(l.source));
+      const tCat = nodeCategoryMap.get(getTargetId(l.target));
+      return sCat === 'cdr' || tCat === 'cdr' || /CDR|CALL|PHONE|COMMUNICATION/i.test(l.relationship || '');
+    }).length;
+
+    // 3. Total Financial Links
+    const totalFinancialLinks = links.filter((l) => {
+      if (l.relationship_type === 'FINANCIAL') return true;
+      const sCat = nodeCategoryMap.get(getSourceId(l.source));
+      const tCat = nodeCategoryMap.get(getTargetId(l.target));
+      return (
+        sCat === 'financial_transaction' ||
+        tCat === 'financial_transaction' ||
+        /FINANCIAL|TRANSACTION|TRANSFER|PAYMENT|LEDGER/i.test(l.relationship || '')
+      );
+    }).length;
+
+    // 4. Total Surveillance Links
+    const totalSurveillanceLinks = links.filter((l) => {
+      if (l.relationship_type === 'SURVEILLANCE') return true;
+      const sCat = nodeCategoryMap.get(getSourceId(l.source));
+      const tCat = nodeCategoryMap.get(getTargetId(l.target));
+      return (
+        sCat === 'surveillance_report' ||
+        tCat === 'surveillance_report' ||
+        /SURVEILLANCE|CCTV|SIGHTING|HARBOR/i.test(l.relationship || '')
+      );
+    }).length;
+
+    // 5. Total Social Media Links
+    const totalSocialLinks = links.filter((l) => {
+      if (l.relationship_type === 'SOCIAL_DIGITAL') return true;
+      const sCat = nodeCategoryMap.get(getSourceId(l.source));
+      const tCat = nodeCategoryMap.get(getTargetId(l.target));
+      return (
+        sCat === 'social_media_intel' ||
+        tCat === 'social_media_intel' ||
+        /SOCIAL|DIGITAL|CYBER|ONLINE|THREAT/i.test(l.relationship || '')
+      );
+    }).length;
+
+    // 6. High-Risk Entities
+    const highRiskEntities = nodes.filter((n) => (n.riskScore ?? 0) >= 75).length;
+
+    // 7. Syndicate / Ring Detections
+    const syndicateDetections = gangs?.length || 0;
+
+    return {
+      totalSuspects,
+      totalCdrLinks,
+      totalFinancialLinks,
+      totalSurveillanceLinks,
+      totalSocialLinks,
+      highRiskEntities,
+      syndicateDetections,
+    };
+  }, [graphData, gangs]);
+
+  // Focus mode: restrict the rendered subgraph to N hops around a chosen entity,
+  // while respecting active source visibility filters.
   const displayData = useMemo(() => {
     const base = graphData ?? { nodes: [], links: [] };
-    if (!focusedNodeId) return base;
-    return computeFocusSubgraph(base, focusedNodeId, focusHops);
-  }, [graphData, focusedNodeId, focusHops]);
+    const visibleNodes = base.nodes.filter((n) => sourceVisibility[n.category] !== false);
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+    const visibleLinks = base.links.filter((l) => {
+      const sId = typeof l.source === 'object' ? l.source.id : l.source;
+      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+      return visibleNodeIds.has(sId) && visibleNodeIds.has(tId);
+    });
+    const filteredBase = { nodes: visibleNodes, links: visibleLinks };
+
+    if (!focusedNodeId) return filteredBase;
+    return computeFocusSubgraph(filteredBase, focusedNodeId, focusHops);
+  }, [graphData, sourceVisibility, focusedNodeId, focusHops]);
+
 
   const focusedNode =
     (focusedNodeId ? graphData?.nodes.find((n) => n.id === focusedNodeId) ?? null : null);
@@ -333,6 +490,10 @@ export const NetworkPageWorkspace: React.FC = () => {
         isNeo4jBacked={isNeo4jBacked}
         onExportMatrix={handleExportMatrix}
         onNeo4jSync={handleNeo4jSync}
+        entityCounts={entityCounts}
+        sourceVisibility={sourceVisibility}
+        onToggleSourceVisibility={handleToggleSourceVisibility}
+        onResetSourceVisibility={handleResetSourceVisibility}
       />
 
       {/* Issue #226: structured multi-parameter search & filter controls */}
@@ -344,6 +505,217 @@ export const NetworkPageWorkspace: React.FC = () => {
         resultCount={resultCount}
         hasActiveFilters={activeFilters}
       />
+
+      {/* Dynamic Intelligence Breakdown & Summary Stats Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        {/* 1. Total Suspects */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setCategoryFilter(categoryFilter === 'suspect' ? 'all' : 'suspect')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setCategoryFilter(categoryFilter === 'suspect' ? 'all' : 'suspect');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            categoryFilter === 'suspect'
+              ? 'bg-[#E24A4A]/20 border-[#E24A4A] shadow-[0_0_12px_rgba(226,74,74,0.3)]'
+              : 'bg-[var(--bg-surface)] hover:bg-[#E24A4A]/10 border-[var(--border-secondary)] hover:border-[#E24A4A]/60'
+          }`}
+          title="Click to filter network by Suspects"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#E24A4A] font-bold truncate">Suspects</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-[#E24A4A] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.totalSuspects}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">Active</span>
+          </div>
+        </div>
+
+        {/* 2. Total CDR Links */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleToggleSourceVisibility('cdr')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleToggleSourceVisibility('cdr');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            sourceVisibility['cdr'] === false
+              ? 'bg-[var(--bg-surface)]/40 border-[var(--border-muted)] opacity-50'
+              : 'bg-[var(--bg-surface)] hover:bg-[#00F0FF]/10 border-[var(--border-secondary)] hover:border-[#00F0FF]/60'
+          }`}
+          title="Click to toggle CDR visibility"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#00F0FF] font-bold truncate">CDR Links</span>
+            <Phone className="w-3.5 h-3.5 text-[#00F0FF] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.totalCdrLinks}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {sourceVisibility['cdr'] === false ? 'Hidden' : 'Calls'}
+            </span>
+          </div>
+        </div>
+
+        {/* 3. Total Financial Links */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleToggleSourceVisibility('financial_transaction')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleToggleSourceVisibility('financial_transaction');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            sourceVisibility['financial_transaction'] === false
+              ? 'bg-[var(--bg-surface)]/40 border-[var(--border-muted)] opacity-50'
+              : 'bg-[var(--bg-surface)] hover:bg-[#FFB703]/10 border-[var(--border-secondary)] hover:border-[#FFB703]/60'
+          }`}
+          title="Click to toggle Financial Transaction visibility"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#FFB703] font-bold truncate">Fin. Links</span>
+            <CreditCard className="w-3.5 h-3.5 text-[#FFB703] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.totalFinancialLinks}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {sourceVisibility['financial_transaction'] === false ? 'Hidden' : 'Transfers'}
+            </span>
+          </div>
+        </div>
+
+        {/* 4. Total Surveillance Links */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleToggleSourceVisibility('surveillance_report')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleToggleSourceVisibility('surveillance_report');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            sourceVisibility['surveillance_report'] === false
+              ? 'bg-[var(--bg-surface)]/40 border-[var(--border-muted)] opacity-50'
+              : 'bg-[var(--bg-surface)] hover:bg-[#A855F7]/10 border-[var(--border-secondary)] hover:border-[#A855F7]/60'
+          }`}
+          title="Click to toggle Surveillance Report visibility"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#A855F7] font-bold truncate">Surveillance</span>
+            <Video className="w-3.5 h-3.5 text-[#A855F7] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.totalSurveillanceLinks}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {sourceVisibility['surveillance_report'] === false ? 'Hidden' : 'Sightings'}
+            </span>
+          </div>
+        </div>
+
+        {/* 5. Total Social Media Links */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleToggleSourceVisibility('social_media_intel')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleToggleSourceVisibility('social_media_intel');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            sourceVisibility['social_media_intel'] === false
+              ? 'bg-[var(--bg-surface)]/40 border-[var(--border-muted)] opacity-50'
+              : 'bg-[var(--bg-surface)] hover:bg-[#3B82F6]/10 border-[var(--border-secondary)] hover:border-[#3B82F6]/60'
+          }`}
+          title="Click to toggle Social Media Intel visibility"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#3B82F6] font-bold truncate">Social Intel</span>
+            <Globe className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.totalSocialLinks}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {sourceVisibility['social_media_intel'] === false ? 'Hidden' : 'Signals'}
+            </span>
+          </div>
+        </div>
+
+        {/* 6. High-Risk Entities */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setMinRisk(minRisk >= 75 ? 0 : 75)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setMinRisk(minRisk >= 75 ? 0 : 75);
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            minRisk >= 75
+              ? 'bg-[#FF5722]/20 border-[#FF5722] shadow-[0_0_12px_rgba(255,87,34,0.3)]'
+              : 'bg-[var(--bg-surface)] hover:bg-[#FF5722]/10 border-[var(--border-secondary)] hover:border-[#FF5722]/60'
+          }`}
+          title="Click to filter by High-Risk Entities (Risk ≥ 75)"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#FF5722] font-bold truncate">High-Risk</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-[#FF5722] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.highRiskEntities}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {minRisk >= 75 ? 'Active ≥75' : 'Score ≥75'}
+            </span>
+          </div>
+        </div>
+
+        {/* 7. Syndicate / Ring Detections */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setActiveView(activeView === 'gangs' ? '3d_explorer' : 'gangs')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveView(activeView === 'gangs' ? '3d_explorer' : 'gangs');
+            }
+          }}
+          className={`p-2 rounded-card border transition-all cursor-pointer flex flex-col justify-between ${
+            activeView === 'gangs'
+              ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] shadow-[0_0_12px_rgba(139,92,246,0.3)]'
+              : 'bg-[var(--bg-surface)] hover:bg-[#8B5CF6]/10 border-[var(--border-secondary)] hover:border-[#8B5CF6]/60'
+          }`}
+          title="Click to inspect Syndicate / Gang Detections"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-wider text-[#8B5CF6] font-bold truncate">Syndicates</span>
+            <Users className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0" />
+          </div>
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-base font-bold font-mono text-[var(--text-primary)]">{summaryStats.syndicateDetections}</span>
+            <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              {activeView === 'gangs' ? 'Viewing' : 'Rings'}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Focus mode indicator */}
       {focusedNode && (

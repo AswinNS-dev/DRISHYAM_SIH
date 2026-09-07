@@ -18,6 +18,10 @@ class NetworkNodeCategory(str, Enum):
     VEHICLE = "vehicle"
     WEAPON = "weapon"
     OFFICER = "officer"
+    CDR = "cdr"
+    FINANCIAL_TRANSACTION = "financial_transaction"
+    SURVEILLANCE_REPORT = "surveillance_report"
+    SOCIAL_MEDIA_INTEL = "social_media_intel"
 
 
 class NetworkNode(BaseModel):
@@ -67,6 +71,10 @@ class RelationshipType(str, Enum):
     SHARED_LOCATION = "SHARED_LOCATION"
     SHARED_MO = "SHARED_MO"
     GANG_ASSOCIATION = "GANG_ASSOCIATION"
+    COMMUNICATION = "COMMUNICATION"
+    FINANCIAL = "FINANCIAL"
+    SURVEILLANCE = "SURVEILLANCE"
+    SOCIAL_DIGITAL = "SOCIAL_DIGITAL"
     OTHER = "OTHER"
 
 
