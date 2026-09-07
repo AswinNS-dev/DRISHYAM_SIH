@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * SecureBackdrop — the SAKSHA login environment.
+ * SecureBackdrop — the DRISHYAM login environment.
  *
  * Layered, extremely low-contrast intelligence ambience:
  *   1. Radial lighting focused on the authentication area

@@ -30,12 +30,14 @@ import {
   getRecentNotifications,
   getNotificationDashboard,
   getRecentIncidents,
+  getIntelligenceOverview,
   type InvestigationGroupedSearchResponse,
   type InvestigationSearchItem,
   type InvestigationInterpretation,
   type InvestigationImageSearchResponse,
   type NotificationRecord,
   type RecentIncident,
+  type IntelligenceOverviewResponse,
 } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useInvestigationPersistence } from '../hooks/useInvestigationPersistence';
@@ -87,6 +89,7 @@ export const CommandCenter: React.FC = () => {
   const [alerts, setAlerts] = useState<NotificationRecord[]>([]);
   const [notifDash, setNotifDash] = useState<{ critical: number; unread: number }>({ critical: 0, unread: 0 });
   const [incidents, setIncidents] = useState<RecentIncident[]>([]);
+  const [intelOverview, setIntelOverview] = useState<IntelligenceOverviewResponse | null>(null);
   const [loadingHome, setLoadingHome] = useState(true);
   const [homeError, setHomeError] = useState<string | null>(null);
 
@@ -124,11 +127,13 @@ export const CommandCenter: React.FC = () => {
       getRecentNotifications(6),
       getNotificationDashboard(),
       getRecentIncidents(),
-    ]).then(([n, d, i]) => {
+      getIntelligenceOverview(),
+    ]).then(([n, d, i, o]) => {
       if (!mounted) return;
       if (n.status === 'fulfilled') setAlerts(n.value);
       if (d.status === 'fulfilled') setNotifDash({ critical: d.value.critical_alerts, unread: d.value.unread_count });
       if (i.status === 'fulfilled') setIncidents(i.value);
+      if (o.status === 'fulfilled') setIntelOverview(o.value);
       if (n.status === 'rejected' || i.status === 'rejected') setHomeError('Some command data is temporarily unavailable.');
       setLoadingHome(false);
     });
@@ -315,6 +320,222 @@ export const CommandCenter: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* ── SIH26189 intelligence overview (all values grounded in stored records) ── */}
+      {intelOverview && (
+        <>
+          {/* Entity inventory + active investigations */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            {[
+              { label: 'Active Cases', value: intelOverview.active_investigations, tone: 'text-[#1E6FD9]' },
+              { label: 'Persons', value: intelOverview.entity_counts.persons ?? 0, tone: 'text-[var(--text-primary)]' },
+              { label: 'Victims', value: intelOverview.entity_counts.victims ?? 0, tone: 'text-[#22c55e]' },
+              { label: 'Organizations', value: intelOverview.entity_counts.organizations ?? 0, tone: 'text-[#a855f7]' },
+              { label: 'Vehicles', value: intelOverview.entity_counts.vehicles ?? 0, tone: 'text-[var(--text-secondary)]' },
+              { label: 'Phone Numbers', value: intelOverview.entity_counts.phone_numbers ?? 0, tone: 'text-[var(--text-secondary)]' },
+              { label: 'Relationships', value: intelOverview.entity_counts.relationships ?? 0, tone: 'text-[#14b8a6]' },
+              { label: 'Cross-Case Links', value: intelOverview.cross_case_connections, tone: 'text-amber-400' },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 p-2.5">
+                <div className={`text-base font-bold font-mono ${stat.tone}`}>{stat.value.toLocaleString('en-IN')}</div>
+                <div className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-muted)]">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* High-risk / influential entities */}
+            <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldAlert className="w-4 h-4 text-[var(--accent-coral)]" />
+                <h4 className="sk-panel-title">High-Risk Persons</h4>
+              </div>
+              {intelOverview.high_risk_entities.length === 0 ? (
+                <p className="text-[10px] font-mono text-[var(--text-muted)]">No linked persons in the current dataset.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {intelOverview.high_risk_entities.slice(0, 4).map((p) => (
+                    <li key={p.id}>
+                      <button onClick={() => goTo('criminals', p.id)} className="w-full flex items-center gap-2 text-left cursor-pointer group">
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[10px] font-semibold text-[var(--text-primary)] truncate group-hover:text-[#1E6FD9]">{p.name}</span>
+                          <span className="block text-[8.5px] font-mono text-[var(--text-muted)]">{p.fir_count} FIR record(s) · risk {p.risk_score.toFixed(0)}/100</span>
+                        </span>
+                        <span className={`w-1.5 h-8 rounded-full ${p.risk_score >= 85 ? 'bg-[var(--accent-coral)]' : 'bg-amber-500'}`} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {intelOverview.influential_entities.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-[var(--border-primary)]">
+                  <div className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Most-connected entities (degree centrality)</div>
+                  <div className="flex flex-wrap gap-1">
+                    {intelOverview.influential_entities.slice(0, 4).map((e, i) => (
+                      <span key={`${e.entity_id}-${i}`} className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[8px] font-mono text-[var(--text-secondary)]">
+                        {e.entity_type} · deg {e.degree}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Geographic hotspots + temporal activity */}
+            <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin className="w-4 h-4 text-[#f59e0b]" />
+                <h4 className="sk-panel-title">Hotspots &amp; Temporal Activity</h4>
+                <button onClick={() => navigate('hotspot')} className="ml-auto text-[9px] font-mono text-[#1E6FD9] hover:underline cursor-pointer">Map</button>
+              </div>
+              {intelOverview.hotspot_districts.length === 0 ? (
+                <p className="text-[10px] font-mono text-[var(--text-muted)]">No FIR activity in the last 90 days.</p>
+              ) : (
+                <div className="space-y-1.5 mb-3">
+                  {intelOverview.hotspot_districts.slice(0, 3).map((h) => {
+                    const max = intelOverview.hotspot_districts[0]?.fir_count || 1;
+                    return (
+                      <div key={h.district} className="flex items-center gap-2">
+                        <span className="w-24 shrink-0 text-[9px] text-[var(--text-secondary)] truncate">{h.district}</span>
+                        <div className="flex-1 h-2 rounded bg-[var(--bg-tertiary)] overflow-hidden">
+                          <div className="h-full bg-[#f59e0b]/70" style={{ width: `${Math.max(6, (h.fir_count / max) * 100)}%` }} />
+                        </div>
+                        <span className="text-[8.5px] font-mono text-[var(--text-muted)] w-8 text-right">{h.fir_count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-muted)] mb-1">FIRs per day (14d)</div>
+              <div className="flex items-end gap-[2px] h-10">
+                {intelOverview.temporal_activity.slice(-14).map((d) => {
+                  const maxV = Math.max(...intelOverview.temporal_activity.map((x) => x.firs), 1);
+                  return (
+                    <div key={d.date} title={`${d.date}: ${d.firs} FIR(s)`} className="flex-1 bg-[#1E6FD9]/60 rounded-t" style={{ height: `${Math.max(6, (d.firs / maxV) * 100)}%` }} />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* AI insights — rule-based, grounded */}
+            <div className="rounded-xl border border-[#a855f7]/25 bg-[#a855f7]/5 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-4 h-4 text-[#a855f7]" />
+                <h4 className="sk-panel-title">AI Investigation Insights</h4>
+              </div>
+              {intelOverview.ai_insights.length === 0 ? (
+                <p className="text-[10px] font-mono text-[var(--text-muted)]">Insufficient stored data for insights.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {intelOverview.ai_insights.slice(0, 3).map((ins) => (
+                    <li key={ins.id}>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#a855f7]/15 border border-[#a855f7]/30 text-[7.5px] font-mono font-bold uppercase tracking-wider text-[#a855f7] mb-1">
+                        {ins.label}
+                      </span>
+                      <p className="text-[10px] font-semibold text-[var(--text-primary)] leading-snug">{ins.title}</p>
+                      <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed mt-0.5">{ins.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Anomalies + suspicious patterns */}
+          {(intelOverview.anomalies.length > 0 || intelOverview.suspicious_patterns.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-[var(--accent-coral)]" />
+                  <h4 className="sk-panel-title">Detected Anomalies</h4>
+                  <button onClick={() => navigate('anomaly')} className="ml-auto text-[9px] font-mono text-[#1E6FD9] hover:underline cursor-pointer">Anomaly feed</button>
+                </div>
+                {intelOverview.anomalies.length === 0 ? (
+                  <p className="text-[10px] font-mono text-[var(--text-muted)]">No open anomalies.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {intelOverview.anomalies.slice(0, 3).map((a) => (
+                      <li key={a.id} className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated)]/30 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[8px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${a.severity === 'critical' ? 'bg-red-950/40 text-red-400' : a.severity === 'high' ? 'bg-orange-950/40 text-orange-400' : 'bg-blue-950/40 text-blue-300'}`}>{a.severity}</span>
+                          <span className="text-[10px] font-semibold text-[var(--text-primary)] truncate">{a.title}</span>
+                        </div>
+                        {a.why_unusual && <p className="text-[9px] text-[var(--text-secondary)] line-clamp-2 mt-1">{a.why_unusual}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-4 h-4 text-[#14b8a6]" />
+                  <h4 className="sk-panel-title">Suspicious Patterns</h4>
+                  <button onClick={() => navigate('network')} className="ml-auto text-[9px] font-mono text-[#1E6FD9] hover:underline cursor-pointer">Network</button>
+                </div>
+                {intelOverview.suspicious_patterns.length === 0 ? (
+                  <p className="text-[10px] font-mono text-[var(--text-muted)]">No detected patterns.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {intelOverview.suspicious_patterns.slice(0, 3).map((p) => (
+                      <li key={p.id} className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated)]/30 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/40 text-[7.5px] font-mono font-bold uppercase text-amber-400">{p.pattern_type}</span>
+                          <span className="text-[10px] font-semibold text-[var(--text-primary)] truncate">{p.title}</span>
+                        </div>
+                        <p className="text-[9px] text-[var(--text-secondary)] line-clamp-2 mt-1">{p.description}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Recently discovered relationships + network growth */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-[#14b8a6]" />
+                <h4 className="sk-panel-title">Recently Discovered Relationships</h4>
+                <button onClick={() => navigate('network')} className="ml-auto text-[9px] font-mono text-[#1E6FD9] hover:underline cursor-pointer">Explore graph</button>
+              </div>
+              {intelOverview.recent_relationships.length === 0 ? (
+                <p className="text-[10px] font-mono text-[var(--text-muted)]">No relationships recorded yet.</p>
+              ) : (
+                <ul className="divide-y divide-[var(--border-primary)]/50">
+                  {intelOverview.recent_relationships.slice(0, 5).map((r) => (
+                    <li key={r.id} className="py-1.5 flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[7.5px] font-mono uppercase text-[var(--text-muted)]">{r.relationship_type.replace(/_/g, ' ')}</span>
+                      <span className="text-[9px] text-[var(--text-secondary)] truncate flex-1">{r.source_type} → {r.target_type}</span>
+                      <span className={`text-[7.5px] font-mono uppercase ${r.provenance === 'ANALYTICAL_INFERENCE' ? 'text-amber-400' : 'text-[#0E9E78]'}`}>{r.provenance === 'ANALYTICAL_INFERENCE' ? 'inferred' : 'recorded'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-[#1E6FD9]" />
+                <h4 className="sk-panel-title">Network Growth (new relationships / week)</h4>
+              </div>
+              <div className="flex items-end gap-1 h-16">
+                {intelOverview.network_growth.map((w) => {
+                  const maxV = Math.max(...intelOverview.network_growth.map((x) => x.new_relationships), 1);
+                  return (
+                    <div key={w.week_start} title={`${w.week_start}: ${w.new_relationships} new`} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full bg-[#1E6FD9]/50 rounded-t" style={{ height: `${Math.max(4, (w.new_relationships / maxV) * 100)}%` }} />
+                      <span className="text-[7px] font-mono text-[var(--text-disabled)]">{w.week_start.slice(5)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-[8px] font-mono text-[var(--text-muted)] mt-2">
+                Ingestion: {Object.entries(intelOverview.ingestion_summary.status_counts).map(([k, v]) => `${k} ${v}`).join(' · ') || 'no jobs yet'}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Recent investigations + saved */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

@@ -31,28 +31,28 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Theme
-  theme: (localStorage.getItem('saksha_theme') as 'dark' | 'light') || 'dark',
+  theme: (localStorage.getItem('drishyam_theme') as 'dark' | 'light') || 'dark',
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('saksha_theme', theme);
+    localStorage.setItem('drishyam_theme', theme);
     set({ theme });
   },
   toggleTheme: () => {
     const newTheme = get().theme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('saksha_theme', newTheme);
+    localStorage.setItem('drishyam_theme', newTheme);
     set({ theme: newTheme });
   },
 
   // Sidebar
-  sidebarCollapsed: localStorage.getItem('saksha_sidebar_collapsed') === 'true',
+  sidebarCollapsed: localStorage.getItem('drishyam_sidebar_collapsed') === 'true',
   setSidebarCollapsed: (collapsed) => {
-    localStorage.setItem('saksha_sidebar_collapsed', String(collapsed));
+    localStorage.setItem('drishyam_sidebar_collapsed', String(collapsed));
     set({ sidebarCollapsed: collapsed });
   },
   toggleSidebar: () => {
     const newVal = !get().sidebarCollapsed;
-    localStorage.setItem('saksha_sidebar_collapsed', String(newVal));
+    localStorage.setItem('drishyam_sidebar_collapsed', String(newVal));
     set({ sidebarCollapsed: newVal });
   },
 

@@ -103,7 +103,7 @@ export const IntelligenceStatusBadges: React.FC<Props> = ({ badges, withInfo = t
                   {badge.tooltip}
                 </p>
                 <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[9px] font-mono text-slate-400">
-                  <span>SAKSHA Intelligence Provenance</span>
+                  <span>DRISHYAM Intelligence Provenance</span>
                   <button
                     type="button"
                     onClick={() => setOpenBadge(null)}

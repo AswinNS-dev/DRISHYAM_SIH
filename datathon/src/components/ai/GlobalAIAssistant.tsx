@@ -214,7 +214,7 @@ export const GlobalAIAssistant: React.FC = () => {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-12 right-6 z-[100] w-14 h-14 rounded-full bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/85 text-[var(--text-primary)] shadow-glow-blue flex items-center justify-center transition-all hover:scale-110 cursor-pointer group"
-          title="SAKSHA AI Assistant"
+          title="DRISHYAM AI Assistant"
         >
           <Sparkles className="w-6 h-6 group-hover:animate-pulse" />
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--accent-teal)] rounded-full border-2 border-[var(--bg-secondary)] animate-pulse" />
@@ -240,7 +240,7 @@ export const GlobalAIAssistant: React.FC = () => {
                   <Sparkles className="w-4 h-4 text-[var(--accent-blue)]" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">SAKSHA AI</h3>
+                  <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">DRISHYAM AI</h3>
                   <p className="text-[9px] font-mono text-[var(--text-muted)] uppercase">Intelligence Assistant</p>
                 </div>
               </div>

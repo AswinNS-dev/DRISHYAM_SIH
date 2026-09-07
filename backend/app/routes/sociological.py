@@ -27,7 +27,7 @@ def socioeconomic_data_quality(
 ):
     """Coverage + district-mapping validation for the socio-economic pipeline.
 
-    Reports which districts each indicator covers, how records map to SAKSHA
+    Reports which districts each indicator covers, how records map to DRISHYAM
     districts, per-record period/completeness, and explicit limitations —
     all computed live (issue 7 §3-§7).
     """

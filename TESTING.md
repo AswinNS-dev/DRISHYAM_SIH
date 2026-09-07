@@ -1,4 +1,4 @@
-# SAKSHA — Testing & Verification Guide
+# DRISHYAM — Testing & Verification Guide
 
 Issue 8 (P1): end-to-end verification suite for Dashboard, Network, Hotspot,
 Prediction, and Authentication flows.
@@ -81,7 +81,7 @@ database, a throwaway JWT secret, and disables background retraining.
 Failed runs upload JUnit XML + captured output as artifacts for debugging;
 secrets are never printed (CI uses throwaway env values only).
 
-Branch protection should require the `Saksha CI` workflow checks
+Branch protection should require the `Drishyam CI` workflow checks
 (frontend-quality, backend-quality, security-scan, repo-validation) before
 merge — critical acceptance failures are merge-blocking by design.
 

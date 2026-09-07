@@ -6,7 +6,7 @@ const { mockPage, backendUser } = vi.hoisted(() => ({
   backendUser: {
     id: 'u-1',
     username: 'TEST-ADMIN-1',
-    email: 'admin@saksha.gov.in',
+    email: 'admin@drishyam.gov.in',
     full_name: 'Test Admin',
     district: 'Bengaluru Urban',
     station: 'HQ',
@@ -23,16 +23,16 @@ vi.mock('../services/api', () => ({
   getMe: vi.fn().mockResolvedValue(backendUser),
   mapBackendRoleToUiRole: (role: string) => String(role).toUpperCase(),
   setStoredTokens: vi.fn((t: { accessToken: string; refreshToken: string }) => {
-    sessionStorage.setItem('saksha_access_token', t.accessToken);
-    sessionStorage.setItem('saksha_refresh_token', t.refreshToken);
+    sessionStorage.setItem('drishyam_access_token', t.accessToken);
+    sessionStorage.setItem('drishyam_refresh_token', t.refreshToken);
   }),
   getStoredTokens: vi.fn(() => ({
-    accessToken: sessionStorage.getItem('saksha_access_token'),
-    refreshToken: sessionStorage.getItem('saksha_refresh_token'),
+    accessToken: sessionStorage.getItem('drishyam_access_token'),
+    refreshToken: sessionStorage.getItem('drishyam_refresh_token'),
   })),
   clearStoredTokens: vi.fn(() => {
-    sessionStorage.removeItem('saksha_access_token');
-    sessionStorage.removeItem('saksha_refresh_token');
+    sessionStorage.removeItem('drishyam_access_token');
+    sessionStorage.removeItem('drishyam_refresh_token');
   }),
 }));
 
@@ -71,8 +71,8 @@ vi.mock('../components/ai/GlobalAIAssistant', () => ({ default: () => null }));
 import App from '../App';
 
 function seedSession() {
-  sessionStorage.setItem('saksha_access_token', 'acc');
-  sessionStorage.setItem('saksha_refresh_token', 'ref');
+  sessionStorage.setItem('drishyam_access_token', 'acc');
+  sessionStorage.setItem('drishyam_refresh_token', 'ref');
 }
 
 beforeEach(() => {

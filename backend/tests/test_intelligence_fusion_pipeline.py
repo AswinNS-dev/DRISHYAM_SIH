@@ -1,4 +1,4 @@
-"""SAKSHA Intelligence Fusion & Action Pipeline Tests.
+"""DRISHYAM Intelligence Fusion & Action Pipeline Tests.
 
 Comprehensive automated tests verifying:
 1. Backward compatibility with existing intelligence and alert endpoints
@@ -52,7 +52,7 @@ def _make_user(db_session, username: str, role_name: str) -> User:
         db_session.flush()
     user = User(
         username=username,
-        email=f"{username}@test.saksha.org",
+        email=f"{username}@test.drishyam.org",
         full_name=username.replace("-", " ").title(),
         hashed_password=hash_password("Password123!"),
         role_id=role.id,
@@ -255,7 +255,7 @@ def test_positive_case_strong_cluster(db_session):
 
     # Metadata & Provenance
     assert pattern["ml_status"] in ("ML", "FALLBACK", "RULE_BASED", "HYBRID")
-    assert pattern["model_name"] == "SAKSHA Intelligence Fusion"
+    assert pattern["model_name"] == "DRISHYAM Intelligence Fusion"
     assert pattern["data_provenance"] in ("LIVE_DB", "DEMO", "MIXED", "UNKNOWN")
 
 

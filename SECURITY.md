@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-The Saksha project is currently under active development.
+The Drishyam project is currently under active development.
 
 Only the latest version in the `main` branch receives security fixes and updates.
 
@@ -17,7 +17,7 @@ Only the latest version in the `main` branch receives security fixes and updates
 
 # Reporting a Security Vulnerability
 
-The Saksha team takes security seriously and appreciates responsible disclosure of vulnerabilities.
+The Drishyam team takes security seriously and appreciates responsible disclosure of vulnerabilities.
 
 If you discover a security issue, **please do not create a public GitHub Issue**.
 
@@ -110,7 +110,7 @@ All contributors remain responsible for the security of AI-assisted code.
 
 # Scope
 
-This policy applies to all components of the Saksha project, including:
+This policy applies to all components of the Drishyam project, including:
 
 - Frontend
 - Backend
@@ -127,4 +127,4 @@ This policy applies to all components of the Saksha project, including:
 
 # Acknowledgements
 
-We appreciate responsible security researchers and contributors who help improve the security of Saksha through responsible disclosure.
+We appreciate responsible security researchers and contributors who help improve the security of Drishyam through responsible disclosure.

@@ -1,4 +1,4 @@
-"""AI Chat Evaluation endpoint — runs the Saksha evaluation suite against
+"""AI Chat Evaluation endpoint — runs the Drishyam evaluation suite against
 the live database and returns structured results.
 
 Issue 170: Provides a programmatic way to evaluate AI chat quality,

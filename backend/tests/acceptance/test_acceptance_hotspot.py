@@ -111,7 +111,7 @@ def test_missing_model_artifact_reports_unavailable_never_claims_ml(
 
     health = client.get(HEALTH, headers=analyst_headers).json()
     assert health["status"] == "ok"  # service alive...
-    assert health["model"] == "SAKSHA Hotspot Predictor"  # ...but metadata honest
+    assert health["model"] == "DRISHYAM Hotspot Predictor"  # ...but metadata honest
 
     predict = client.post(PREDICT, json={"records": _records()}, headers=analyst_headers)
     assert predict.status_code == 200

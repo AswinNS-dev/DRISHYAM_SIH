@@ -54,7 +54,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     import traceback
     import logging
-    logging.getLogger("saksha").error("Unhandled exception: %s", traceback.format_exc())
+    logging.getLogger("drishyam").error("Unhandled exception: %s", traceback.format_exc())
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=_error_body("INTERNAL_SERVER_ERROR", "An internal server error occurred. Please try again later.", 500),

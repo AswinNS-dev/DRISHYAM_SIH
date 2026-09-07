@@ -290,7 +290,7 @@ def _xlsx_response(filename: str, title: str, filters: dict, headers: list[str],
     # Metadata block
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
-    sheet.append(["SAKSHA Police Intelligence & Analytics Platform"])
+    sheet.append(["DRISHYAM Police Intelligence & Analytics Platform"])
     sheet.append([title])
     sheet.append([f"Generated At: {generated} | Filters: {filter_str} | Total Records: {len(rows)}"])
     sheet.append([])
@@ -326,7 +326,7 @@ def _generate_txt(title: str, filters: dict, headers: list[str], rows: list[dict
     
     lines = [
         "=" * 90,
-        "SAKSHA POLICE INTELLIGENCE & ANALYTICS PLATFORM".center(90),
+        "DRISHYAM POLICE INTELLIGENCE & ANALYTICS PLATFORM".center(90),
         "CONFIDENTIAL LAW-ENFORCEMENT REPORT".center(90),
         "=" * 90,
         "",
@@ -436,7 +436,7 @@ def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict
         def header(self):
             self.set_font(_font, "B", 13)
             self.set_text_color(15, 23, 42)
-            self.cell(0, 7, "SAKSHA Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
+            self.cell(0, 7, "DRISHYAM Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
             self.set_font(_font, "B", 10.5)
             self.set_text_color(30, 111, 217)
             self.cell(0, 6, safe_text(title), align="C", new_x="LMARGIN", new_y="NEXT")
@@ -448,7 +448,7 @@ def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict
             self.set_y(-15)
             self.set_font(_font, "I", 8)
             self.set_text_color(100, 116, 139)
-            self.cell(0, 10, f"SAKSHA Platform  |  Page {self.page_no()} of {{nb}}  |  CONFIDENTIAL LAW-ENFORCEMENT REPORT", align="C")
+            self.cell(0, 10, f"DRISHYAM Platform  |  Page {self.page_no()} of {{nb}}  |  CONFIDENTIAL LAW-ENFORCEMENT REPORT", align="C")
 
     pdf = ReportPDF(orientation=orientation)
     pdf.alias_nb_pages()
@@ -572,7 +572,7 @@ def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict
 def _generate_docx(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
     doc = Document()
     
-    h0 = doc.add_heading("SAKSHA Police Intelligence & Analytics Platform", level=0)
+    h0 = doc.add_heading("DRISHYAM Police Intelligence & Analytics Platform", level=0)
     if h0.runs:
         h0.runs[0].font.bold = True
     
@@ -743,7 +743,7 @@ def _render_snapshot_response(
         "Status": report.status,
         "Integrity Hash": report.integrity_hash or "pending",
     }
-    filename = f"saksha_{report.report_type}_report_v{report.version}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    filename = f"drishyam_{report.report_type}_report_v{report.version}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
     if export_format == "csv":
         return _csv_response(filename, headers, rows)
@@ -1074,7 +1074,7 @@ def export_report(
         }),
     )
     db.commit()
-    filename = f"saksha_{report_type}_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    filename = f"drishyam_{report_type}_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     title = f"{report_type.title()} Report"
     
     if export_format == "csv":

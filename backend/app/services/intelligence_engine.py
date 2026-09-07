@@ -1635,7 +1635,7 @@ def build_intelligence(db: Session, entity_type: str, entity_id: str) -> dict[st
 
 
 # ---------------------------------------------------------------------------
-# j) SAKSHA Intelligence Fusion & Action Pipeline
+# j) DRISHYAM Intelligence Fusion & Action Pipeline
 # ---------------------------------------------------------------------------
 
 def _to_utc(dt: datetime | None) -> datetime | None:
@@ -2211,7 +2211,7 @@ def fuse_emerging_intelligence(
             "suggested_intervention": suggested_intervention,
         },
         "ml_status": ml_status,
-        "model_name": "SAKSHA Intelligence Fusion",
+        "model_name": "DRISHYAM Intelligence Fusion",
         "model_version": model_ver,
         "detection_timestamp": now.isoformat(),
         "explanation": explanation,

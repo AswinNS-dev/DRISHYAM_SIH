@@ -1,9 +1,9 @@
 """
-Full database export: schema + data for every table in the Saksha database.
+Full database export: schema + data for every table in the Drishyam database.
 Produces a single SQL file that can be imported into a new Supabase project.
 
 Usage:  py -3.12 scripts/db_export_full.py
-Output: backups/saksha_full_dump.sql
+Output: backups/drishyam_full_dump.sql
 """
 import os
 import sys
@@ -13,7 +13,7 @@ import psycopg2
 import time
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
 os.makedirs(BACKUP_DIR, exist_ok=True)
-OUTPUT = os.path.join(BACKUP_DIR, 'saksha_full_dump.sql')
+OUTPUT = os.path.join(BACKUP_DIR, 'drishyam_full_dump.sql')
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
@@ -170,7 +170,7 @@ def main():
     log(f"Found {len(tables)} tables")
 
     with open(OUTPUT, 'w', encoding='utf-8') as f:
-        f.write("-- Saksha Database Full Dump\n")
+        f.write("-- Drishyam Database Full Dump\n")
         f.write(f"-- Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("-- For import into a new Supabase project\n\n")
         f.write("SET client_encoding = 'UTF8';\n")

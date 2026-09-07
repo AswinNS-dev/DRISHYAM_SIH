@@ -52,7 +52,7 @@ beforeEach(() => {
   vi.mocked(getSociologicalSocioeconomic).mockReset();
   vi.mocked(getAnomalies).mockResolvedValue({ anomalies: [] });
   vi.mocked(getModelInfo).mockResolvedValue({
-    model_name: 'SAKSHA District Risk & Forecast',
+    model_name: 'DRISHYAM District Risk & Forecast',
     risk_algorithm: 'RandomForest',
     forecast_algorithm: 'XGBoost',
     version: '1.0.0',

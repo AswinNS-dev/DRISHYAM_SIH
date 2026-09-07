@@ -1,4 +1,4 @@
-"""Rule-based intent detection for Saksha AI Chat.
+"""Rule-based intent detection for Drishyam AI Chat.
 
 Classifies user queries into one or more domain intents using weighted
 keyword matching and regex pattern detection. No external model required.
@@ -29,12 +29,12 @@ class Intent(Enum):
 _PLATFORM_GENERAL_PATTERNS = re.compile(
     r"\b(?:what\s+is|about|tell\s+me\s+about|describe|explain|introduction|overview\s+of|purpose|goal|"
     r"who\s+(?:made|built|developed|designed)|how\s+(?:does|do|did)|why\s+(?:is|was|are|did)|"
-    r"architecture|tech\s+stack|features|capabilities|modules|who\s+is\s+saksha)\b"
-    r".*?\b(?:saksha|platform|system|application|project|tool|software|crime\s+intelligence)\b",
+    r"architecture|tech\s+stack|features|capabilities|modules|who\s+is\s+drishyam)\b"
+    r".*?\b(?:drishyam|platform|system|application|project|tool|software|crime\s+intelligence)\b",
     re.I,
 )
 _PLATFORM_GENERAL_WORDS = {
-    "saksha", "platform", "system", "application", "project", "tool", "software",
+    "drishyam", "platform", "system", "application", "project", "tool", "software",
     "crime intelligence", "crime intelligence platform",
 }
 _PLATFORM_GENERAL_LEAD = re.compile(
@@ -44,7 +44,7 @@ _PLATFORM_GENERAL_LEAD = re.compile(
 
 
 def _is_platform_question(message: str) -> bool:
-    """True when the user is asking about Saksha itself, not querying data."""
+    """True when the user is asking about Drishyam itself, not querying data."""
     if _PLATFORM_GENERAL_PATTERNS.search(message):
         return True
     lower = message.lower()
@@ -215,7 +215,7 @@ class IntentResult:
 
 
 class IntentRouter:
-    """Classifies user queries into Saksha domain intents."""
+    """Classifies user queries into Drishyam domain intents."""
 
     def detect(self, message: str) -> IntentResult:
         if _is_platform_question(message):

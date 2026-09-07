@@ -1,4 +1,4 @@
-"""Alembic environment for Saksha.
+"""Alembic environment for Drishyam.
 
 Reads DATABASE_URL from app.core.config.settings and uses the full model
 registry via app.models (which imports every ORM class).

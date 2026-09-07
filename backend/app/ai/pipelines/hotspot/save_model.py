@@ -1,5 +1,5 @@
 """
-SAKSHA – Hotspot Model Artifact Serialization
+DRISHYAM – Hotspot Model Artifact Serialization
 
 Responsibilities
 ----------------
@@ -69,7 +69,7 @@ def save_artifacts(
     try:
         version = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         metadata = {
-            "model_name": "SAKSHA Hotspot Predictor",
+            "model_name": "DRISHYAM Hotspot Predictor",
             "algorithm": "LightGBM",
             "version": version_dir.name if version_dir else version,
             "h3_resolution": H3_RESOLUTION,

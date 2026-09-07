@@ -125,7 +125,7 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({
       {
         "FIR ID": fir.fir_number,
         "File Name": filename,
-        Classification: "SAKSHA CASE RECON DATA - CLASSIFIED SYSTEM",
+        Classification: "DRISHYAM CASE RECON DATA - CLASSIFIED SYSTEM",
         Timestamp: new Date().toISOString(),
       },
       `CONFIDENTIAL - ${user?.badgeId || "SYSTEM"}`,

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Saksha — Issue 5 (P1): ingestion pipeline upgrade
+-- Drishyam — Issue 5 (P1): ingestion pipeline upgrade
 --
 -- `Base.metadata.create_all()` creates NEW tables but cannot ALTER existing
 -- ones. Run this script ONCE against an existing Supabase/PostgreSQL database
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS import_staging_records (
     row_number             INTEGER NOT NULL,
     source_row_ref         VARCHAR(100),
     raw_data               TEXT,          -- verbatim mapped source values
-    mapped_data            TEXT,          -- validated/normalized Saksha values
+    mapped_data            TEXT,          -- validated/normalized Drishyam values
     validation_status      VARCHAR(20)  NOT NULL DEFAULT 'pending', -- valid|invalid|warning
     validation_errors      TEXT,          -- JSON [{code, field, message}]
     validation_warnings    TEXT,          -- JSON [{code, field, message}]

@@ -1,5 +1,5 @@
 """
-SAKSHA – Hotspot Prediction Inference
+DRISHYAM – Hotspot Prediction Inference
 
 Responsibilities
 ----------------
@@ -217,7 +217,7 @@ def get_model_info() -> dict[str, Any]:
         model = None
     is_ml = model is not None
     return {
-        "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),
+        "model_name": meta.get("model_name", "DRISHYAM Hotspot Predictor"),
         "algorithm": meta.get("algorithm", "LightGBM"),
         "version": meta.get("version", "trained") if is_ml else "untrained",
         "prediction_mode": "ML" if is_ml else "FALLBACK",

@@ -159,7 +159,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       case 'h3': els.push(<h4 key={k} className="chat-md-h3">{fmt(b.text)}</h4>); break;
       case 'p':
         els.push(
-          /^Source: Saksha Database/.test(b.text)
+          /^Source: Drishyam Database/.test(b.text)
             ? <p key={k} className="chat-md-footer">{b.text}</p>
             : <p key={k} className="chat-md-p">{fmt(b.text)}</p>
         ); break;

@@ -48,6 +48,9 @@ from app.routes import (
     victimology,
 )
 
+# SIH26189: admin-only structured intelligence ingestion pipeline
+from app.routes import ingestion
+
 # Issue #146: station drill-down + red-zone spike alerts
 from app.routes import (
     alerts,
@@ -112,6 +115,9 @@ api_router.include_router(data_import.router)
 api_router.include_router(victimology.router)
 api_router.include_router(ai_mo.router)
 api_router.include_router(interventions.router)
+
+# SIH26189: admin-only structured intelligence ingestion
+api_router.include_router(ingestion.router)
 
 # Issue #146: station drill-down + red-zone spike alerts
 api_router.include_router(stations.router)

@@ -39,7 +39,7 @@ ROLES = ["admin", "crime_analyst", "investigator", "policymaker", "inspector", "
 DEMO_USERS = [
     {
         "username": "admin",
-        "email": "admin@saksha.local",
+        "email": "admin@drishyam.local",
         "full_name": "Platform Administrator",
         "password": "564738",
         "role_name": "admin",
@@ -48,7 +48,7 @@ DEMO_USERS = [
     },
     {
         "username": "SCRB-7740",
-        "email": "scrb-7740@saksha.local",
+        "email": "scrb-7740@drishyam.local",
         "full_name": "DCP Rajesh Kumar",
         "password": "123456",
         "role_name": "crime_analyst",
@@ -57,7 +57,7 @@ DEMO_USERS = [
     },
     {
         "username": "IO-3921",
-        "email": "io-3921@saksha.local",
+        "email": "io-3921@drishyam.local",
         "full_name": "Inspector Meera Sen",
         "password": "456789",
         "role_name": "investigator",
@@ -68,7 +68,7 @@ DEMO_USERS = [
     },
     {
         "username": "SP-0088",
-        "email": "sp-0088@saksha.local",
+        "email": "sp-0088@drishyam.local",
         "full_name": "SP Anil Kumble",
         "password": "987654",
         "role_name": "policymaker",
@@ -79,7 +79,7 @@ DEMO_USERS = [
     },
     {
         "username": "INS-2110",
-        "email": "ins-2110@saksha.local",
+        "email": "ins-2110@drishyam.local",
         "full_name": "Inspector Disha Rao",
         "password": "112233",
         "role_name": "inspector",
@@ -90,7 +90,7 @@ DEMO_USERS = [
     },
     {
         "username": "FSL-9033",
-        "email": "fsl-9033@saksha.local",
+        "email": "fsl-9033@drishyam.local",
         "full_name": "Forensic Analyst Karthik Nair",
         "password": "445566",
         "role_name": "forensic",
@@ -101,7 +101,7 @@ DEMO_USERS = [
     },
     {
         "username": "VIEW-5522",
-        "email": "view-5522@saksha.local",
+        "email": "view-5522@drishyam.local",
         "full_name": "Citizen Observer Priya Menon",
         "password": "778899",
         "role_name": "viewer",

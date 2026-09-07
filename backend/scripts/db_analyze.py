@@ -1,4 +1,4 @@
-"""Analyze PostgreSQL database storage for Saksha optimization."""
+"""Analyze PostgreSQL database storage for Drishyam optimization."""
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))

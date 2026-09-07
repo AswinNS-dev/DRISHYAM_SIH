@@ -147,7 +147,7 @@ function NotFound() {
 
         {/* Footer stamp */}
         <p className="mt-8 text-center text-[10px] font-mono text-[var(--text-disabled)] tracking-widest uppercase">
-          SAKSHA v2.0 · Karnataka State Police · SCRB
+          DRISHYAM v2.0 · Karnataka State Police · SCRB
         </p>
       </div>
     </div>

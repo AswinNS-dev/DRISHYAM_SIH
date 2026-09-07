@@ -1,7 +1,7 @@
-# SAKSHA Predictive Intelligence: District Risk, Forecast & Hotspot ML Models
+# DRISHYAM Predictive Intelligence: District Risk, Forecast & Hotspot ML Models
 
 ## 1. Overview
-SAKSHA's predictive intelligence pipeline provides empirical, time-aware machine learning forecasts for crime patterns across Karnataka police jurisdictions. The system adheres to strict operational principles:
+DRISHYAM's predictive intelligence pipeline provides empirical, time-aware machine learning forecasts for crime patterns across Karnataka police jurisdictions. The system adheres to strict operational principles:
 - **Zero Fabricated Intelligence**: Predictions, confidence levels, and validation metrics are grounded directly in real PostgreSQL database records (`crime_cases`, `locations`, `crime_categories`, `firs`).
 - **Explicit ML Mode vs Fallback Mode**: If a validated, compatible model artifact is unavailable or input data is sparse, the system explicitly returns `prediction_mode: "FALLBACK"` (or `"UNAVAILABLE"`), never misrepresenting heuristics as trained ML intelligence.
 - **Time-Aware Validation & No Data Leakage**: Models are trained and evaluated chronologically using `TimeSeriesSplit` and historical holdout splits to ensure no future data leaks into past feature computations.

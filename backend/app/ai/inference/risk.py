@@ -1,5 +1,5 @@
 """
-SAKSHA – District Risk & Forecast Inference
+DRISHYAM – District Risk & Forecast Inference
 
 Responsibilities
 ----------------
@@ -247,7 +247,7 @@ def get_model_info() -> dict[str, Any]:
     mode = "ML" if is_ml else ("HYBRID" if (risk_model or forecast_model) else "FALLBACK")
     
     return {
-        "model_name": meta.get("model_name", "SAKSHA District Risk & Forecast"),
+        "model_name": meta.get("model_name", "DRISHYAM District Risk & Forecast"),
         "risk_algorithm": meta.get("risk_algorithm", "RandomForest"),
         "forecast_algorithm": meta.get("forecast_algorithm", "XGBoost"),
         "version": meta.get("version", "untrained" if not is_ml else "trained"),

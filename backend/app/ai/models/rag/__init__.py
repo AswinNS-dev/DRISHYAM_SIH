@@ -1,4 +1,4 @@
-"""RAG chat models for the Saksha investigation assistant."""
+"""RAG chat models for the Drishyam investigation assistant."""
 
 from .chat_model import (
     ChatCitation,

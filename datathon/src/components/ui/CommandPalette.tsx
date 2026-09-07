@@ -22,7 +22,6 @@ import {
   BookOpen,
   ArrowRight,
   CornerDownLeft,
-  Fingerprint,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -42,7 +41,6 @@ const commands: CommandItem[] = [
   { id: 'fir', label: 'FIR Registry', description: 'First Information Reports', icon: <FileText className="w-4 h-4" />, tab: 'fir', category: 'Navigation', keywords: ['fir', 'report', 'information'] },
   { id: 'hotspot', label: 'Hotspot Map', description: 'Crime hotspot spatial analysis', icon: <Map className="w-4 h-4" />, tab: 'hotspot', category: 'Navigation', keywords: ['hotspot', 'map', 'spatial', 'location'] },
   { id: 'network', label: 'Network Graph', description: 'Criminal network visualization', icon: <Network className="w-4 h-4" />, tab: 'network', category: 'Navigation', keywords: ['network', 'graph', 'connections', 'links'] },
-  { id: 'identity', label: 'Identity Resolution', description: 'Fake/duplicate record detection and review', icon: <Fingerprint className="w-4 h-4" />, tab: 'identity', category: 'Navigation', keywords: ['identity', 'duplicate', 'fake', 'integrity', 'data', 'security'] },
   { id: 'predictive', label: 'Predictive AI', description: 'AI-powered crime predictions', icon: <Brain className="w-4 h-4" />, tab: 'predictive', category: 'Navigation', keywords: ['predict', 'ai', 'forecast', 'risk'] },
   { id: 'sociological', label: 'Sociological Intelligence', description: 'Demographic and socio-economic crime analysis', icon: <BarChart3 className="w-4 h-4" />, tab: 'sociological', category: 'Navigation', keywords: ['sociological', 'demographic', 'population', 'urban', 'rural', 'socio', 'economic'] },
   { id: 'strategic', label: 'Strategic Intelligence', description: 'Command-level intelligence briefing', icon: <ShieldAlert className="w-4 h-4" />, tab: 'strategic', category: 'Navigation', keywords: ['strategic', 'command', 'briefing', 'deployment', 'risk', 'intelligence'] },
@@ -206,7 +204,7 @@ export const CommandPalette: React.FC = () => {
 
             {/* Footer */}
             <div className="flex items-center gap-4 px-4 py-2 border-t border-[var(--border-secondary)] text-[10px] text-[var(--text-muted)]">
-              <span className="flex items-center gap-1"><kbd className="px-1 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded font-mono">↑↓</kbd> Navigate</span>
+              <span className="flex items-center gap-1"><kbd className="px-1 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded font-mono">â†‘â†“</kbd> Navigate</span>
               <span className="flex items-center gap-1"><kbd className="px-1 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded font-mono"><CornerDownLeft className="w-2.5 h-2.5 inline" /></kbd> Select</span>
               <span className="flex items-center gap-1"><kbd className="px-1 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded font-mono">esc</kbd> Close</span>
             </div>

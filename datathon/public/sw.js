@@ -1,4 +1,4 @@
-/* Saksha — Progressive Web App service worker.
+/* Drishyam — Progressive Web App service worker.
    Network-first for navigations with offline fallback to the app shell.
    Cache-first (runtime) for same-origin static assets.
    API requests are always network-first and never cached, so live crime

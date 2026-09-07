@@ -340,7 +340,7 @@ async function downloadManaged(reportId: string) {
   const blob = await resp.blob();
   const disposition = resp.headers.get('Content-Disposition') ?? '';
   const match = disposition.match(/filename="([^"]+)"/);
-  const filename = match?.[1] ?? `saksha_report_${reportId}.pdf`;
+  const filename = match?.[1] ?? `drishyam_report_${reportId}.pdf`;
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

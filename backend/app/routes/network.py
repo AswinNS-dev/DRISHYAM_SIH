@@ -15,6 +15,7 @@ from app.database.postgres import get_db
 from app.models.network import (
     AIGraphInsight,
     GangNetworkSummary,
+    HiddenNetworkResponse,
     LinkAnalysisResponse,
     NetworkGraphResponse,
     NetworkPathResponse,
@@ -317,6 +318,45 @@ def get_ai_graph_insights(
 ):
     """Generate AI graph intelligence threat alerts, broker node detection, and investigation recommendations."""
     return network_service.generate_ai_graph_insights(db)
+
+
+@router.get("/hidden-networks", response_model=HiddenNetworkResponse)
+def get_hidden_networks(
+    min_hops: int = Query(2, ge=2, le=5),
+    max_hops: int = Query(3, ge=2, le=5),
+    limit: int = Query(50, ge=1, le=100),
+    criminal_name: str | None = Query(None),
+    crime_type: str | None = Query(None),
+    district: str | None = Query(None),
+    police_station: str | None = Query(None),
+    fir_number: str | None = Query(None),
+    victim_name: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Friends-of-friends hidden network discovery (SIH26189 §15).
+
+    Surfaces entity pairs with no direct relationship record that are connected
+    through configurable 2-5 hop chains of intermediaries. Every connection is
+    evidence-backed and explicitly labelled as an INDIRECT / POTENTIAL network
+    connection — never a confirmed criminal relationship.
+    """
+    return network_service.discover_hidden_networks(
+        db,
+        min_hops=min_hops,
+        max_hops=max_hops,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=_parse_network_date(date_from),
+        date_to=_parse_network_date(date_to, end_of_day=True),
+        limit=limit,
+    )
 
 
 @router.post("/sync-neo4j", dependencies=[Depends(require_roles("admin", "crime_analyst"))])

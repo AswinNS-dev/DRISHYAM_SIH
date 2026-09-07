@@ -304,7 +304,7 @@ def _generate_evidence_pdf(evidence: Evidence, metadata: EvidenceMetadata | None
             self.set_y(-15)
             self.set_font("helvetica", "I", 8)
             self.set_text_color(100, 115, 140)
-            self.cell(0, 10, f"SAKSHA Intelligence Platform  |  Page {self.page_no()} of {{nb}}  |  OFFICIAL POLICE RECORD", align="C")
+            self.cell(0, 10, f"DRISHYAM Intelligence Platform  |  Page {self.page_no()} of {{nb}}  |  OFFICIAL POLICE RECORD", align="C")
 
     pdf = EvidencePDF(orientation="P", unit="mm", format="A4")
     pdf.alias_nb_pages()
@@ -611,7 +611,7 @@ def get_evidence_summary(evidence_id: uuid.UUID, db: Session = Depends(get_db), 
     ai_summary = EvidenceAISummary(
         evidence_id=evidence_id,
         summary=summary_text,
-        model="saksha-evidence-summary"
+        model="drishyam-evidence-summary"
     )
     db.add(ai_summary)
     db.commit()

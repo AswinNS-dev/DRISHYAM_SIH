@@ -103,13 +103,13 @@ class TestLocalGeneration:
         return LLMGenerator()
 
     def test_empty_context_yields_refusal(self, local_gen):
-        answer = _collect_local(local_gen, "Show me FIR 1234/2026", "No relevant data was found in the Saksha database for this query.", "sys")
+        answer = _collect_local(local_gen, "Show me FIR 1234/2026", "No relevant data was found in the Drishyam database for this query.", "sys")
         assert "could not find matching records" in answer
 
     def test_all_empty_sources_yield_refusal(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Officers\nNo officers found.\n\n"
-            "### Saksha PostgreSQL Database — Fir\nNo FIR found."
+            "### Drishyam PostgreSQL Database — Officers\nNo officers found.\n\n"
+            "### Drishyam PostgreSQL Database — Fir\nNo FIR found."
         )
         answer = _collect_local(local_gen, "Any officers?", context, "sys")
         assert "could not find matching records" in answer
@@ -118,9 +118,9 @@ class TestLocalGeneration:
         """Regression for issue #122: one 'No X found' source must not flip the
         whole reply into a canned refusal when other sources returned data."""
         context = (
-            "### Saksha PostgreSQL Database — Fir\n"
+            "### Drishyam PostgreSQL Database — Fir\n"
             "FIR Number: 1234/2026 | Complainant: Ravi Kumar | Status: open | Sections: IPC 379\n\n"
-            "### Saksha PostgreSQL Database — Officers\n"
+            "### Drishyam PostgreSQL Database — Officers\n"
             "No officers found."
         )
         answer = _collect_local(local_gen, "What is the status of FIR 1234/2026?", context, "sys")
@@ -130,9 +130,9 @@ class TestLocalGeneration:
 
     def test_relevant_section_ranked_first(self, local_gen):
         context = (
-            "### Saksha Analytics Engine — Crime Statistics\n"
+            "### Drishyam Analytics Engine — Crime Statistics\n"
             "Total crimes: 11. Open cases: 5. Resolution rate: 40%.\n\n"
-            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "### Drishyam PostgreSQL Database — Criminal Record\n"
             "Name: Ramu Swamy | Status: at_large | Aliases: Ramu\n"
             "Name: Vikram Yadav | Status: arrested | Aliases: Vicky"
         )
@@ -141,26 +141,26 @@ class TestLocalGeneration:
 
     def test_smalltalk_gets_greeting_not_data_dump(self, local_gen):
         context = (
-            "### Saksha Analytics Engine — Summary\n"
+            "### Drishyam Analytics Engine — Summary\n"
             "Total crimes: 11. Open cases: 5. Resolution rate: 40%."
         )
         answer = _collect_local(local_gen, "hello!", context, "sys")
-        assert "SAKSHA AI" in answer
+        assert "DRISHYAM AI" in answer
         assert "Total crimes" not in answer
 
     def test_answer_carries_source_footer(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Case\n"
+            "### Drishyam PostgreSQL Database — Case\n"
             "Case: CR-2026-KA-0001 | Status: open | Priority: high | Progress: 20%"
         )
         answer = _collect_local(local_gen, "Details of case CR-2026-KA-0001", context, "sys")
-        assert "Saksha Database" in answer
+        assert "Drishyam Database" in answer
 
     def test_zero_overlap_with_stats_yields_refusal(self, local_gen):
         context = (
-            "### Saksha Analytics Engine — Crime Statistics\n"
+            "### Drishyam Analytics Engine — Crime Statistics\n"
             "Total crimes: 11. Open cases: 5. Resolution rate: 40%.\n\n"
-            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "### Drishyam PostgreSQL Database — Criminal Record\n"
             "Name: Ramu Swamy | Status: at_large | Aliases: Ramu"
         )
         answer = _collect_local(local_gen, "What is the airspeed velocity of an unladen swallow?", context, "sys")
@@ -170,7 +170,7 @@ class TestLocalGeneration:
         """When the query has no lexical overlap with any records, the assistant
         must refuse rather than dumping unrelated records."""
         context = (
-            "### Saksha PostgreSQL Database — Dossiers\n"
+            "### Drishyam PostgreSQL Database — Dossiers\n"
             "Ramu Swamy: Status=INCARCERATED, Classification=A-CATEGORY, Risk=83, Active Districts=Mysuru\n"
             "Vikram Yadav: Status=ACTIVE, Classification=A-CATEGORY, Risk=71, Active Districts=Bengaluru"
         )
@@ -179,12 +179,12 @@ class TestLocalGeneration:
 
     def test_bengaluru_criminal_lists_returns_records_not_refusal(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Criminals\n"
+            "### Drishyam PostgreSQL Database — Criminals\n"
             "Name: Vikram Yadav | Status: at_large | Address: 14, Whitefield, Bengaluru | MO: Warehouse burglaries\n"
             "Name: Ramu Swamy | Status: arrested | Address: Mysuru central | MO: Chain snatching"
         )
         answer = _collect_local(local_gen, "Bengaluru criminal lists", context, "sys")
-        assert "could not find matching records in the Saksha database for that query" not in answer
+        assert "could not find matching records in the Drishyam database for that query" not in answer
         assert "Vikram Yadav" in answer
 
     def test_query_tokens_ignore_stopwords(self):
@@ -197,14 +197,14 @@ class TestLocalGeneration:
         """Regression: 'Which district has high criminal rate?' must answer with a
         ranked summary — no relevance metadata, no N/A dossier noise, no dump."""
         context = (
-            "### Saksha PostgreSQL Database — Vector Retrieval\n"
+            "### Drishyam PostgreSQL Database — Vector Retrieval\n"
             "District Bengaluru Urban has 28 registered crime cases, District Mysuru has 13 registered crime cases, "
             "District Belagavi has 8 registered crime cases, District Dharwad has 8 registered crime cases, "
             "District Ballari has 7 registered crime cases\n\n"
-            "### Saksha PostgreSQL Database — Dossiers\n"
+            "### Drishyam PostgreSQL Database — Dossiers\n"
             "N/A: Status=INCARCERATED, Classification=A-CATEGORY, Risk=N/A\n"
             "N/A: Status=ACTIVE, Classification=A-CATEGORY, Risk=N/A\n\n"
-            "### Saksha Analytics Engine — Crime Statistics\n"
+            "### Drishyam Analytics Engine — Crime Statistics\n"
             "Total crime records: 61. Open active cases: 30."
         )
         answer = _collect_local(local_gen, "Which district has high criminal rate?", context, "sys")
@@ -216,7 +216,7 @@ class TestLocalGeneration:
 
     def test_superlative_lowest_orders_ascending(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Vector Retrieval\n"
+            "### Drishyam PostgreSQL Database — Vector Retrieval\n"
             "District Bengaluru Urban has 28 registered crime cases, District Hassan has 2 registered crime cases"
         )
         answer = _collect_local(local_gen, "Which district has the lowest crime rate?", context, "sys")
@@ -225,7 +225,7 @@ class TestLocalGeneration:
 
     def test_list_answers_have_clean_lead_in_without_titles(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "### Drishyam PostgreSQL Database — Criminal Record\n"
             "Name: Ramu Swamy | Status: at_large | Aliases: Ramu"
         )
         answer = _collect_local(local_gen, "Show me all criminals", context, "sys")
@@ -235,7 +235,7 @@ class TestLocalGeneration:
 
     def test_junk_na_lines_never_reach_any_answer(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Dossiers\n"
+            "### Drishyam PostgreSQL Database — Dossiers\n"
             "N/A: Status=INCARCERATED, Classification=A-CATEGORY, Risk=N/A\n"
             "Name: Mohsin Pasha | Status: ACTIVE | Risk: 71"
         )
@@ -247,11 +247,11 @@ class TestLocalGeneration:
         """Vector retrieval and the structured FIR fetch return the SAME records —
         each FIR must appear exactly once in the answer."""
         context = (
-            "### Saksha PostgreSQL Database — Vector Retrieval\n"
+            "### Drishyam PostgreSQL Database — Vector Retrieval\n"
             "FIR Number: FIR-789/MYS/2026. Complainant: Dr. Vinay Murthy. Status: registered. "
             "Sections: IPC 379. Narrative: Backend-seeded FIR for CR-2026-MYS-001.\n"
             "FIR Number: FIR-790/MYS/2026. Complainant: Dr. Vinay Murthy. Status: closed.\n\n"
-            "### Saksha PostgreSQL Database — Fir\n"
+            "### Drishyam PostgreSQL Database — Fir\n"
             "FIR Number: FIR-789/MYS/2026 | Complainant: Dr. Vinay Murthy | Status: registered | Sections: IPC 379\n"
             "FIR Number: FIR-790/MYS/2026 | Complainant: Dr. Vinay Murthy | Status: closed\n"
             "FIR Number: FIR-792/MYS/2026 | Complainant: State Complainant | Status: registered"
@@ -264,7 +264,7 @@ class TestLocalGeneration:
 
     def test_answers_use_markdown_formatting(self, local_gen):
         context = (
-            "### Saksha PostgreSQL Database — Case\n"
+            "### Drishyam PostgreSQL Database — Case\n"
             "Case: CR-2026-KA-0001 | Status: open | Priority: high | Progress: 20%"
         )
         answer = _collect_local(local_gen, "Details of case CR-2026-KA-0001", context, "sys")
@@ -275,7 +275,7 @@ class TestLocalGeneration:
         flattening the reply into one line left the chat UI with an unreadable
         blob instead of a lead-in, one record per line, and a footer."""
         context = (
-            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "### Drishyam PostgreSQL Database — Criminal Record\n"
             "Name: Ramu Swamy | Status: at_large | Aliases: Ramu\n"
             "Name: Vikram Yadav | Status: arrested | Aliases: Vicky"
         )
@@ -285,10 +285,10 @@ class TestLocalGeneration:
         assert "records I found" in lines[0]
         assert lines[1].startswith("1. ")
         assert lines[2].startswith("2. ")
-        assert "Source: Saksha Database" in lines[-1]
+        assert "Source: Drishyam Database" in lines[-1]
 
     def test_stream_text_round_trips_whitespace_exactly(self):
-        text = "Lead-in:\n\n1. First record\n2. Second record\n\nSource: Saksha Database."
+        text = "Lead-in:\n\n1. First record\n2. Second record\n\nSource: Drishyam Database."
         chunks = list(LLMGenerator._stream_text(text))
         assert "".join(chunks) == text
         assert len(chunks) > 1  # still delivered as multiple typing chunks
@@ -351,7 +351,7 @@ class TestKeyFailover:
         gen = LLMGenerator()
         gen._transport = httpx.MockTransport(handler)
         context = (
-            "### Saksha PostgreSQL Database — FIR Record\n"
+            "### Drishyam PostgreSQL Database — FIR Record\n"
             "FIR Number: FIR/2026/77 | Complainant: Meena | Status: open\n"
             "Narrative: Gold chain snatching near KR Puram bus stand."
         )
@@ -383,7 +383,7 @@ class TestKeyFailover:
         gen = LLMGenerator()
         gen._transport = httpx.MockTransport(handler)
         context = (
-            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "### Drishyam PostgreSQL Database — Criminal Record\n"
             "Name: Vikram Yadav | Status: at_large | Aliases: Vicky"
         )
         answer = _collect_generate(gen, "Who is Vikram Yadav?", context, "sys")

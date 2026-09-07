@@ -7,7 +7,7 @@ interface I18nState {
   t: TranslationSet;
 }
 
-const STORAGE_KEY = 'saksha_language';
+const STORAGE_KEY = 'drishyam_language';
 
 function getStoredLanguage(): Language {
   try {

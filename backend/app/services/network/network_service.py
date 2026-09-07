@@ -32,6 +32,8 @@ from app.models.network import (
     CentralityMetric,
     GangHierarchyMember,
     GangNetworkSummary,
+    HiddenConnection,
+    HiddenNetworkResponse,
     LinkAnalysisResponse,
     NetworkEdge,
     NetworkGraphResponse,
@@ -1447,7 +1449,13 @@ def find_connection_path(
 
 
 def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
-    """Compute network centrality, bridge nodes, broker scores, and graph density."""
+    """Compute network centrality, bridge nodes, broker scores, and graph density.
+
+    SIH26189: betweenness is now computed exactly with Brandes' algorithm,
+    closeness centrality via BFS from every node, and a PageRank-style influence
+    score via iterative power iteration. All metrics are derived from the live
+    SQL graph and never fabricated.
+    """
     nodes, edges = _build_sql_graph(db)
     degree_counts = Counter()
     adjacency: dict[str, set[str]] = defaultdict(set)
@@ -1461,35 +1469,34 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     max_possible_edges = (total_nodes * (total_nodes - 1)) / 2 if total_nodes > 1 else 1
     density = round(len(edges) / max_possible_edges, 3)
 
+    # --- Real graph metrics (Brandes betweenness, BFS closeness, PageRank) ---
+    node_ids = [n.id for n in nodes]
+    betweenness = _brandes_betweenness(node_ids, adjacency)
+    closeness = _closeness_centrality(node_ids, adjacency)
+    pagerank = _pagerank_scores(node_ids, adjacency)
+
     centralities: list[CentralityMetric] = []
     for n in nodes:
         deg = degree_counts[n.id]
         norm_deg = round(deg / (total_nodes - 1), 3) if total_nodes > 1 else 0.0
-        # Betweenness approximated via neighbor diversity: a node connecting
-        # otherwise-disconnected neighbors acts as a bridge/broker.
-        neighbor_count = len(adjacency[n.id])
-        inter_links = sum(
-            1 for x in adjacency[n.id] for y in adjacency[n.id]
-            if x < y and y in adjacency[x]
-        )
-        possible_pairs = neighbor_count * (neighbor_count - 1) / 2 if neighbor_count > 1 else 1
-        brokerage_ratio = 1 - (inter_links / possible_pairs) if possible_pairs else 0.0
-        betweenness = round(min(1.0, norm_deg * 1.2 + brokerage_ratio * 0.5 + (n.riskScore / 400)), 2)
-        is_bridge = betweenness > 0.4 or deg >= 4
+        bet = round(betweenness.get(n.id, 0.0), 3)
+        is_bridge = bet > 0.05 or deg >= 4
         centralities.append(
             CentralityMetric(
                 node_id=n.id,
                 node_name=n.name,
                 category=n.category.value,
                 degree_centrality=norm_deg,
-                betweenness_score=betweenness,
+                betweenness_score=bet,
+                closeness_centrality=round(closeness.get(n.id, 0.0), 3),
+                pagerank_score=round(pagerank.get(n.id, 0.0), 5),
                 is_bridge_node=is_bridge,
                 riskScore=n.riskScore,
             )
         )
 
     sorted_brokers = sorted(centralities, key=lambda c: c.betweenness_score, reverse=True)
-    sorted_impact = sorted(centralities, key=lambda c: c.degree_centrality, reverse=True)
+    sorted_impact = sorted(centralities, key=lambda c: c.pagerank_score, reverse=True)
     bridges = [c for c in centralities if c.is_bridge_node]
 
     gang_networks = get_organization_gang_networks(db)
@@ -1500,6 +1507,339 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
         top_broker_nodes=sorted_brokers[:5],
         high_impact_nodes=sorted_impact[:5],
         bridge_nodes=bridges,
+    )
+
+
+def _brandes_betweenness(node_ids: list[str], adjacency: dict[str, set[str]]) -> dict[str, float]:
+    """Exact betweenness centrality for an unweighted undirected graph (Brandes 2001)."""
+    betweenness: dict[str, float] = dict.fromkeys(node_ids, 0.0)
+    for s in node_ids:
+        stack: list[str] = []
+        predecessors: dict[str, list[str]] = defaultdict(list)
+        sigma: dict[str, float] = defaultdict(float)
+        sigma[s] = 1.0
+        dist: dict[str, int] = {s: 0}
+        queue: deque[str] = deque([s])
+        while queue:
+            v = queue.popleft()
+            stack.append(v)
+            for w in adjacency.get(v, ()):
+                if w not in dist:
+                    dist[w] = dist[v] + 1
+                    queue.append(w)
+                if dist[w] == dist[v] + 1:
+                    sigma[w] += sigma[v]
+                    predecessors[w].append(v)
+        delta: dict[str, float] = defaultdict(float)
+        while stack:
+            w = stack.pop()
+            for v in predecessors[w]:
+                delta[v] += (sigma[v] / sigma[w]) * (1.0 + delta[w]) if sigma[w] else 0.0
+            if w != s:
+                betweenness[w] += delta[w]
+    # Normalize to 0..1 for undirected graphs: divide by ((n-1)(n-2)/2).
+    n = len(node_ids)
+    if n > 2:
+        norm = ((n - 1) * (n - 2)) / 2
+        for k in betweenness:
+            betweenness[k] = betweenness[k] / norm if norm else 0.0
+    return betweenness
+
+
+def _closeness_centrality(node_ids: list[str], adjacency: dict[str, set[str]]) -> dict[str, float]:
+    """Closeness centrality via BFS distances (Wasserman-Faust improved scaling)."""
+    closeness: dict[str, float] = dict.fromkeys(node_ids, 0.0)
+    for s in node_ids:
+        dist: dict[str, int] = {s: 0}
+        queue: deque[str] = deque([s])
+        total = 0
+        while queue:
+            v = queue.popleft()
+            for w in adjacency.get(v, ()):
+                if w not in dist:
+                    dist[w] = dist[v] + 1
+                    total += dist[w]
+                    queue.append(w)
+        reachable = len(dist) - 1
+        if total > 0 and reachable > 0:
+            closeness[s] = (reachable / total) * (reachable / (len(node_ids) - 1)) if len(node_ids) > 1 else 0.0
+    return closeness
+
+
+def _pagerank_scores(node_ids: list[str], adjacency: dict[str, set[str]], damping: float = 0.85, iterations: int = 50) -> dict[str, float]:
+    """PageRank-style influence scoring (iterative power iteration, L1-tolerant)."""
+    n = len(node_ids)
+    if n == 0:
+        return {}
+    rank: dict[str, float] = dict.fromkeys(node_ids, 1.0 / n)
+    for _ in range(iterations):
+        next_rank: dict[str, float] = dict.fromkeys(node_ids, (1.0 - damping) / n)
+        dangling_sum = sum(rank[v] for v in node_ids if not adjacency.get(v))
+        if dangling_sum:
+            base = damping * dangling_sum / n
+            for k in next_rank:
+                next_rank[k] += base
+        for v in node_ids:
+            neighbors = adjacency.get(v)
+            if not neighbors:
+                continue
+            share = damping * rank[v] / len(neighbors)
+            for w in neighbors:
+                next_rank[w] += share
+        delta = sum(abs(next_rank[k] - rank[k]) for k in node_ids)
+        rank = next_rank
+        if delta < 1e-8:
+            break
+    return rank
+
+
+def discover_hidden_networks(
+    db: Session,
+    min_hops: int = 2,
+    max_hops: int = 3,
+    criminal_name: str | None = None,
+    crime_type: str | None = None,
+    district: str | None = None,
+    police_station: str | None = None,
+    fir_number: str | None = None,
+    victim_name: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 50,
+) -> HiddenNetworkResponse:
+    """Friends-of-friends hidden network discovery over shared-FIR participation.
+
+    Surfaces entity pairs that have NO direct relationship record but ARE
+    connected through one or more intermediaries (A → B → C, or deeper). Every
+    result carries the full evidence chain (the intermediate entities plus the
+    FIR records supporting each hop) and is explicitly labelled as an
+    *indirect / potential* network connection — never as a confirmed
+    criminal association.
+    """
+    min_hops = max(2, int(min_hops))
+    max_hops = max(min_hops, min(int(max_hops), 5))
+    limit = max(1, min(int(limit), 100))
+
+    filtered_fir_ids = _filter_fir_ids(
+        db,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if not filtered_fir_ids:
+        return HiddenNetworkResponse(found=0, connections=[], explanation="No network relationships found for the selected filters.")
+
+    _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
+
+    firs = (
+        db.query(FIR)
+        .options(
+            joinedload(FIR.crime_case).joinedload(CrimeCase.location),
+            joinedload(FIR.crime_case).joinedload(CrimeCase.category),
+            joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
+            joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
+        )
+        .filter(FIR.id.in_(filtered_fir_ids))
+        .order_by(FIR.filed_at.asc())
+        .all()
+    )
+
+    people: dict[str, dict[str, Any]] = {}
+    fir_counts: dict[str, int] = defaultdict(int)
+    edge_evidence: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for fir in firs:
+        case = fir.crime_case
+        participants: list[str] = []
+        for link in fir.criminal_links:
+            criminal = link.criminal
+            if criminal is None:
+                continue
+            node_id = f"criminal-{criminal.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": criminal.full_name,
+                    "category": NetworkNodeCategory.SUSPECT if criminal.status == "at_large" else NetworkNodeCategory.OFFENDER,
+                    "riskScore": _criminal_risk(criminal),
+                    "district": case.location.district if case and case.location else None,
+                    "status": criminal.status,
+                    "isSeed": criminal.full_name in seed_criminal_names,
+                }
+            participants.append(node_id)
+        for vlink in fir.victim_links:
+            victim = vlink.victim
+            node_id = f"victim-{victim.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": victim.full_name,
+                    "category": NetworkNodeCategory.VICTIM,
+                    "riskScore": 15.0,
+                    "district": case.location.district if case and case.location else None,
+                    "status": "victim",
+                    "isSeed": victim.full_name in seed_victim_names,
+                }
+            participants.append(node_id)
+        if fir.investigating_officer:
+            officer = fir.investigating_officer
+            node_id = f"officer-{officer.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": officer.name,
+                    "category": NetworkNodeCategory.OFFICER,
+                    "riskScore": 10.0,
+                    "district": officer.district,
+                    "status": officer.status,
+                    "isSeed": False,
+                }
+            participants.append(node_id)
+
+        participants = list(dict.fromkeys(participants))
+        for participant in participants:
+            fir_counts[participant] += 1
+
+        evidence_row = {
+            "fir_number": fir.fir_number,
+            "case_number": case.case_number if case else None,
+            "crime_type": (case.category.name if case and case.category else (case.mo_tags if case and case.mo_tags else None)),
+            "district": case.location.district if case and case.location else None,
+            "date": fir.filed_at.isoformat() if fir.filed_at else None,
+        }
+        for i in range(len(participants)):
+            for j in range(i + 1, len(participants)):
+                u, v = participants[i], participants[j]
+                key = (u, v) if u < v else (v, u)
+                slot = edge_evidence.setdefault(key, {"rows": []})
+                slot["rows"].append(evidence_row)
+
+    adjacency: dict[str, list[str]] = defaultdict(list)
+    for (u, v), slot in edge_evidence.items():
+        adjacency[u].append(v)
+        adjacency[v].append(u)
+    for node_id in adjacency:
+        adjacency[node_id].sort(key=lambda nid: people[nid]["name"].lower())
+
+    # Cap the traversal to the largest connected component slice so the BFS
+    # all-pairs sweep stays bounded on large graphs.
+    candidate_ids = sorted(adjacency.keys(), key=lambda nid: -len(adjacency[nid]))[:300]
+    candidate_set = set(candidate_ids)
+
+    direct_pairs: set[frozenset[str]] = {frozenset(pair) for pair in edge_evidence}
+    seen_targets: dict[str, set[str]] = defaultdict(set)
+    results: list[HiddenConnection] = []
+
+    for src in candidate_ids:
+        # BFS up to max_hops, tracking all shortest paths (bounded fan-out).
+        dist: dict[str, int] = {src: 0}
+        paths: dict[str, list[list[str]]] = {src: [[src]]}
+        frontier = [src]
+        for _ in range(max_hops):
+            next_frontier: list[str] = []
+            for node_id in frontier:
+                for neighbor in adjacency.get(node_id, ()):
+                    if neighbor in candidate_set and neighbor not in dist:
+                        dist[neighbor] = dist[node_id] + 1
+                        next_frontier.append(neighbor)
+                    if neighbor in candidate_set and dist.get(neighbor) == dist[node_id] + 1:
+                        paths.setdefault(neighbor, []).extend(
+                            [p + [neighbor] for p in paths[node_id][:3]]
+                        )
+                        paths[neighbor] = paths[neighbor][:6]
+            frontier = next_frontier
+            if not frontier:
+                break
+
+        for tgt, hops in dist.items():
+            if hops < min_hops or hops > max_hops:
+                continue
+            pair = frozenset({src, tgt})
+            if pair in direct_pairs:
+                continue  # direct relationship exists — not a hidden connection
+            if tgt in seen_targets[src]:
+                continue
+            seen_targets[src].add(tgt)
+            seen_targets[tgt].add(src)
+
+            chain = paths.get(tgt, [[src, tgt]])[0]
+            hop_evidence = []
+            supporting_firs: list[str] = []
+            corroborated = True
+            strength = 0.0
+            for i in range(len(chain) - 1):
+                u, v = chain[i], chain[i + 1]
+                key = (u, v) if u < v else (v, u)
+                slot = edge_evidence.get(key)
+                if not slot or not slot["rows"]:
+                    corroborated = False
+                    continue
+                rows = slot["rows"]
+                fir_numbers = sorted({r["fir_number"] for r in rows})
+                supporting_firs.extend(fir_numbers)
+                strength += len(rows)
+                hop_evidence.append({
+                    "from": u,
+                    "to": v,
+                    "from_name": people[u]["name"],
+                    "to_name": people[v]["name"],
+                    "relationship": "Shared FIR participation",
+                    "fir_numbers": fir_numbers,
+                    "shared_record_count": len(rows),
+                })
+
+            if not corroborated or not hop_evidence:
+                continue
+
+            intermediates = [
+                {
+                    "id": nid,
+                    "name": people[nid]["name"],
+                    "category": people[nid]["category"].value,
+                    "riskScore": people[nid]["riskScore"],
+                }
+                for nid in chain[1:-1]
+            ]
+            results.append(HiddenConnection(
+                source={"id": src, "name": people[src]["name"], "category": people[src]["category"].value, "riskScore": people[src]["riskScore"]},
+                target={"id": tgt, "name": people[tgt]["name"], "category": people[tgt]["category"].value, "riskScore": people[tgt]["riskScore"]},
+                hops=hops,
+                intermediates=intermediates,
+                chain=chain,
+                label=f"{hops}-hop indirect connection",
+                connection_status="POTENTIAL",
+                strength=round(strength, 1),
+                supporting_firs=sorted(set(supporting_firs))[:12],
+                hop_evidence=hop_evidence,
+                explanation=(
+                    f"{people[src]['name']} and {people[tgt]['name']} have no direct relationship "
+                    f"record, but are connected through {len(intermediates)} intermediary entit"
+                    f"{'y' if len(intermediates) == 1 else 'ies'} "
+                    f"({', '.join(i['name'] for i in intermediates)}). This is an "
+                    f"{hops}-hop *indirect* connection derived from {len(set(supporting_firs))} "
+                    "shared FIR record(s); it is a potential network link for investigation, "
+                    "NOT a confirmed criminal relationship."
+                ),
+            ))
+            if len(results) >= limit * 2:
+                break
+        if len(results) >= limit * 2:
+            break
+
+    results.sort(key=lambda c: (-c.strength, c.hops))
+    results = results[:limit]
+    return HiddenNetworkResponse(
+        found=len(results),
+        connections=results,
+        explanation=(
+            f"{len(results)} indirect (hidden) connection(s) found within {min_hops}-{max_hops} "
+            "hops of the current filtered network. Each connection is labelled as a potential "
+            "network link with its full evidence chain — none are confirmed associations."
+            if results
+            else "No hidden multi-hop connections found in the current filtered network."
+        ),
     )
 
 

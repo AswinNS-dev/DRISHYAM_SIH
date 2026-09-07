@@ -70,7 +70,7 @@ const GROUP_LABELS: Array<{ key: GroupKey; label: string }> = [
   { key: 'older', label: 'Older' },
 ];
 
-const LAST_CONV_KEY = 'saksha_chat_last';
+const LAST_CONV_KEY = 'drishyam_chat_last';
 
 function deriveTitle(text: string): string {
   const c = text.replace(/\s+/g, ' ').trim();
@@ -631,7 +631,7 @@ export const AIChat: React.FC = () => {
             <PanelLeft size={16} />
           </button>
           <span className="chat-topbar-title">
-            {cur ? cur.title : 'SAKSHA AI'}
+            {cur ? cur.title : 'DRISHYAM AI'}
             {cur?.temporary && <span className="chat-temp-chip">TEMPORARY</span>}
           </span>
         </div>
@@ -646,7 +646,7 @@ export const AIChat: React.FC = () => {
               <p className="chat-welcome-sub">
                 {cur?.temporary
                   ? 'This is a temporary chat. Messages stay in this session only until you save it.'
-                  : "I'm SAKSHA AI — ask me about cases, criminals, FIRs, statistics, or predictions."}
+                  : "I'm DRISHYAM AI — ask me about cases, criminals, FIRs, statistics, or predictions."}
               </p>
               <div className="chat-prompts">
                 {PROMPTS.map((p, i) => {
@@ -684,7 +684,7 @@ export const AIChat: React.FC = () => {
                       {u ? <User size={16} /> : <Bot size={16} />}
                     </div>
                     <div className="chat-msg-body">
-                      <span className="chat-msg-name">{u ? 'You' : 'SAKSHA AI'}</span>
+                      <span className="chat-msg-name">{u ? 'You' : 'DRISHYAM AI'}</span>
                       {u ? (
                         <p className="chat-msg-user-text">{m.text}</p>
                       ) : (
@@ -736,7 +736,7 @@ export const AIChat: React.FC = () => {
             <div className="chat-msg msg-a">
               <div className="chat-avatar av-a"><Bot size={16} /></div>
               <div className="chat-msg-body">
-                <span className="chat-msg-name">SAKSHA AI</span>
+                <span className="chat-msg-name">DRISHYAM AI</span>
                 <div className="chat-thinking">
                   <span className="chat-thinking-dot" /><span className="chat-thinking-dot" /><span className="chat-thinking-dot" />
                   <span className="chat-thinking-text">{status || 'Thinking...'}</span>
@@ -771,7 +771,7 @@ export const AIChat: React.FC = () => {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={cur?.temporary ? 'Temporary message...' : 'Message SAKSHA AI...'}
+              placeholder={cur?.temporary ? 'Temporary message...' : 'Message DRISHYAM AI...'}
               className="chat-ta"
               rows={1}
             />

@@ -84,7 +84,7 @@ export const FIRTimeline: React.FC<FIRTimelineProps> = ({ fir }) => {
     events.push({
       title: 'Investigation Filed & Closed',
       date: fir.created_at, // Use created/updated date for closure
-      description: 'Charge sheet and final status investigation report uploaded. Case marked as closed/resolved in Saksha database.',
+      description: 'Charge sheet and final status investigation report uploaded. Case marked as closed/resolved in Drishyam database.',
       icon: <CheckCircle2 className="w-3.5 h-3.5" />,
       color: 'bg-emerald-600 shadow-emerald-600/30'
     });

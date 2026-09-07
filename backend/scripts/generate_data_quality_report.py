@@ -1,5 +1,5 @@
 """
-Data Quality Report Generator for SAKSHA Database (Issue #199 Section 26).
+Data Quality Report Generator for DRISHYAM Database (Issue #199 Section 26).
 
 Produces a comprehensive analysis of entity counts, distributions, input type coverage,
 time series spread, MO patterns, network links, and provenance integrity.
@@ -35,7 +35,7 @@ def generate_report():
     db = SessionLocal()
     try:
         print("=" * 70)
-        print("          SAKSHA DATASET QUALITY & INTEGRITY REPORT")
+        print("          DRISHYAM DATASET QUALITY & INTEGRITY REPORT")
         print("=" * 70)
         print(f"Generated At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}")
         print("-" * 70)

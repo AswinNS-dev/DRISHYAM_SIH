@@ -1,4 +1,4 @@
-﻿"""Issue 160: AI chat grounding, authorization-aware PII handling, and
+"""Issue 160: AI chat grounding, authorization-aware PII handling, and
 prediction-honesty tests."""
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class TestGroundingGate:
         llm_output = "Case CR-2026-XX-999 is definitely linked to gang activity."
         validated = self.validator.validate(llm_output, [])
         assert validated == (
-            "I could not find matching records in the Saksha database for that query. "
+            "I could not find matching records in the Drishyam database for that query. "
             "No verified data sources were available to ground an answer, so I will not "
             "speculate. Please try rephrasing your question or check the case/FIR number."
         )

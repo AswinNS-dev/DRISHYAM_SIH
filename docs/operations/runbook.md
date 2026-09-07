@@ -1,6 +1,6 @@
-# SAKSHA Production Operations Runbook
+# DRISHYAM Production Operations Runbook
 
-**Platform:** SAKSHA Crime Intelligence & Analytical Platform (KSP, Datathon 2026 Challenge 2)
+**Platform:** DRISHYAM Crime Intelligence & Analytical Platform (KSP, Datathon 2026 Challenge 2)
 **Scope:** Deploy, configure, start, monitor, troubleshoot, recover, and maintain every component.
 **Audience:** Authorized operations / deployment team. No source-code reading required to follow this document.
 **Status:** Every command and endpoint below was verified against the repository. Where a capability does not exist, it is explicitly documented as a **documented gap / operational requirement** rather than assumed.
@@ -16,7 +16,7 @@ Related documentation (read before operating):
 
 ## 1. System Overview
 
-SAKSHA transforms crime records (FIRs, cases, criminals, victims, officers, evidence) into operational intelligence: dashboards, heatmaps, criminal-network graphs (Neo4j), AI/ML predictions (hotspots, district risk, criminal risk, anomaly detection), a RAG-chat analyst, notifications/alerts, and bulk CCTNS/ICJS-style data ingestion.
+DRISHYAM transforms crime records (FIRs, cases, criminals, victims, officers, evidence) into operational intelligence: dashboards, heatmaps, criminal-network graphs (Neo4j), AI/ML predictions (hotspots, district risk, criminal risk, anomaly detection), a RAG-chat analyst, notifications/alerts, and bulk CCTNS/ICJS-style data ingestion.
 
 - **Backend:** FastAPI (Python 3.12), served by uvicorn on port `8000`.
 - **Frontend:** React 18 + TypeScript + Vite 5. Dev server on port `5173`; production build served by **nginx** on port `80` (single-container image) or any static host with an SPA fallback.
@@ -202,8 +202,8 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 12. Deploy options:
     - **Single container (frontend+backend+nginx):** build the repo-root `Dockerfile`:
       ```
-      docker build -t saksha-full .
-      docker run -d --name saksha -p 80:80 --env-file backend/.env saksha-full
+      docker build -t drishyam-full .
+      docker run -d --name drishyam -p 80:80 --env-file backend/.env drishyam-full
       ```
       nginx serves `dist/`, proxies `/api`, `/health`, `/uploads`, `/docs`, `/redoc`, `/openapi.json` to the local uvicorn, and implements the SPA fallback (`try_files $uri /index.html;`) so deep links survive refresh.
     - **Static host (S3/CloudFront/other):** upload `dist/` and configure a **fallback to `index.html`** for any non-asset path (§19 requirement).
@@ -227,14 +227,14 @@ npm run dev:all
 Launches backend (uvicorn, reload, `:8000`) and frontend (Vite, `:5173`) via `scripts/dev-all.js`. Or run individually: `npm run dev:backend`, `npm run dev:frontend`.
 
 **Production:**
-- Single container: `docker run … saksha-full` / `docker compose up -d backend` (root `Dockerfile` starts uvicorn then nginx via `start.sh`; `supervisord.conf` is an alternative supervisor config present in the repo but `start.sh` is what the image uses).
+- Single container: `docker run … drishyam-full` / `docker compose up -d backend` (root `Dockerfile` starts uvicorn then nginx via `start.sh`; `supervisord.conf` is an alternative supervisor config present in the repo but `start.sh` is what the image uses).
 - Managed: start uvicorn (§6.E), then serve `dist/` behind your web server with the SPA fallback and API proxy.
 
 **Verifying startup (backend):**
 ```
 curl http://localhost:8000/
 ```
-→ `{"message":"SAKSHA Backend is running","docs":"/docs"}`.
+→ `{"message":"DRISHYAM Backend is running","docs":"/docs"}`.
 
 Expected healthy boot log:
 - `PostgreSQL connection OK`
@@ -252,8 +252,8 @@ Expected healthy boot log:
 | Start | `uvicorn app.main:app --host 0.0.0.0 --port 8000` | Use `--reload` only in dev |
 | Verify | `curl http://localhost:8000/health/ready` | expect `"postgresql":"up"` |
 | Logs (foreground) | stdout with loguru format | levels: INFO (non-debug), DEBUG only when `DEBUG` enabled |
-| Logs (file) | `logs/saksha_backend.log` (relative to working dir) | 10 MB rotation, 30-day retention |
-| Stop | `Ctrl+C` / `docker compose stop backend` / `docker stop saksha` | graceful; closes Neo4j driver |
+| Logs (file) | `logs/drishyam_backend.log` (relative to working dir) | 10 MB rotation, 30-day retention |
+| Stop | `Ctrl+C` / `docker compose stop backend` / `docker stop drishyam` | graceful; closes Neo4j driver |
 | Restart | start again (above) or `docker compose restart backend` | |
 
 Expected healthy behavior: `/health/ready` → `200` with `"status":"ok","postgresql":"up"`; `/docs` serves the interactive OpenAPI UI; API calls succeed after login.
@@ -390,17 +390,17 @@ Supabase-specific operations (§15): the database is managed via the Supabase da
 - **What to back up:** the entire Postgres schema + data (all 16+ tables). Model artifacts and uploads are separate (§22/§24).
 - **How:** use the standard Postgres tooling. For the Docker Postgres:
   ```
-  docker compose -f backend/docker-compose.yml exec postgres pg_dump -U <user> -d <db> -Fc -f /tmp/saksha_$(date +%F).dump
-  docker compose -f backend/docker-compose.yml cp postgres:/tmp/saksha_$(date +%F).dump ./saksha_$(date +%F).dump
+  docker compose -f backend/docker-compose.yml exec postgres pg_dump -U <user> -d <db> -Fc -f /tmp/drishyam_$(date +%F).dump
+  docker compose -f backend/docker-compose.yml cp postgres:/tmp/drishyam_$(date +%F).dump ./drishyam_$(date +%F).dump
   ```
   For Supabase/direct:
   ```
-  pg_dump "<DATABASE_URL>" -Fc -f saksha_$(date +%F).dump
+  pg_dump "<DATABASE_URL>" -Fc -f drishyam_$(date +%F).dump
   ```
 - **Frequency / storage / access:** ⚠ **documented gap** — *no automated backup job exists in the repository.* There is no backup scheduler, off-site store, or retention policy implemented. Define one operationally (e.g. nightly scheduled `pg_dump` to a secured object store, restricted to DB owners), or rely on the provider's managed backup SLA (Supabase offers daily backups — verify retention in the dashboard).
 - **Integrity verification:** restore a copy into a scratch database and count rows:
   ```
-  pg_restore -l saksha_<date>.dump | head
+  pg_restore -l drishyam_<date>.dump | head
   ```
   and compare `SELECT count(*) FROM crime_cases;` on source vs restored.
 
@@ -413,8 +413,8 @@ Supabase-specific operations (§15): the database is managed via the Supabase da
 1. **Locate the newest good backup** (§13).
 2. **Restore into a safe environment first**:
    ```
-   createdb "<DATABASE_URL>" saksha_restore_test   # adjust per your tooling
-   pg_restore -d "<DATABASE_URL>" -Fc saksha_<date>.dump
+   createdb "<DATABASE_URL>" drishyam_restore_test   # adjust per your tooling
+   pg_restore -d "<DATABASE_URL>" -Fc drishyam_<date>.dump
    ```
 3. **Verify schema**: `\dt` and table counts match the source (spot-check `crime_cases`, `firs`, `criminals`, `users`).
 4. **Verify data**: recent records present; demo seed vs live provenance sane (`SELECT dataset_provenance, count(*) FROM crime_cases GROUP BY 1;`).
@@ -454,7 +454,7 @@ The backend uses Supabase for three optional surfaces:
   ```
   docker compose -f backend/docker-compose.yml up -d neo4j
   ```
-  Container `saksha_neo4j`, image `neo4j:5.24-community`, **graph-data-science plugin** enabled, ports `7474` (browser) and `7687` (bolt). For Neo4j Aura, use the provided URI/credentials in `.env` (`NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`).
+  Container `drishyam_neo4j`, image `neo4j:5.24-community`, **graph-data-science plugin** enabled, ports `7474` (browser) and `7687` (bolt). For Neo4j Aura, use the provided URI/credentials in `.env` (`NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`).
 - **Connection configuration:** `NEO4J_URI` (default `bolt://localhost:7687`), `NEO4J_USER`/`NEO4J_USERNAME`, `NEO4J_PASSWORD`. Production startup **fails** if the password is still `neo4j`.
 - **Health check:** `/health/ready` field `neo4j`; or on the container `docker compose ps neo4j`; or browse `http://localhost:7474` and run `RETURN 1`.
 - **Authentication:** configured via `NEO4J_AUTH` in compose (`user/password`) or Aura credentials.
@@ -466,7 +466,7 @@ The backend uses Supabase for three optional surfaces:
   MATCH (n) WHERE NOT n.id RETURN labels(n) LIMIT 5;
   ```
 - **Restart:** `docker compose restart neo4j` (data persists in the `neo4j_data` volume; Aura is externally managed).
-- **Backup/recovery:** for Docker, back up the `neo4j_data` volume (`docker run --rm -v saksha_neo4j_data:/data -v $(pwd):/backup alpine tar czf /backup/neo4j_data.tgz -C /data .`); for Aura, use provider-managed snapshots. ⚠ Aura periodic backup is provider-managed — verify availability.
+- **Backup/recovery:** for Docker, back up the `neo4j_data` volume (`docker run --rm -v drishyam_neo4j_data:/data -v $(pwd):/backup alpine tar czf /backup/neo4j_data.tgz -C /data .`); for Aura, use provider-managed snapshots. ⚠ Aura periodic backup is provider-managed — verify availability.
 - **Troubleshooting:** auth failures (credentials; default password rejected in prod), port conflicts on `7687`/`7474`, GDS plugin not loading (image + plugin flag), connectivity from backend (firewall to Aura).
 - **Failure behavior when required:** Neo4j is **optional**. When unavailable, the app operates in **PostgreSQL fallback mode** — the network APIs reconstruct the graph from SQL. This is not "Neo4j healthy"; `/health/ready` will say `neo4j: degraded`, so monitoring is unambiguous.
 
@@ -670,7 +670,7 @@ The same event is written to the standard `audit_logs` table with action `MODEL_
 | Person images | `image_url` on criminals/victims/officers | Supabase Storage | persistent |
 | Model artifacts | Trained models | `backend/app/ai/models/**` + `mlflow/` registry | persistent on disk/volume |
 | Reports | Exports | generated in-process; file downloads (`/api/v2/reports/export`) — report metadata + snapshots in DB | DB-persistent metadata; files ephemeral |
-| Logs | Loguru | `logs/saksha_backend.log` + stdout | 10 MB rotation / 30-day retention |
+| Logs | Loguru | `logs/drishyam_backend.log` + stdout | 10 MB rotation / 30-day retention |
 | RAG vector store | In-memory (SHA-256 embeddings) | `app/ai/vectorstore/memory.py` | **Not persistent** across restarts (documented gap) |
 
 - **Frontend/nginx:** the single-image nginx config proxies `/uploads/` to the backend and sets `client_max_body_size 100M`. Backend caps evidence files at **50 MB** (`MAX_FILE_SIZE_MB`, hard-coded in `evidence_service.py`).
@@ -722,7 +722,7 @@ Use only what the system actually exposes:
 - **Neo4j health:** `/health/ready` `neo4j` field; browser `:7474`; Postgres↔Neo4j sync status via the sync endpoint (manual).
 - **Storage health:** test upload/download; disk usage of `UPLOAD_DIR`; Supabase bucket status.
 - **AI/model health:** `/api/v2/ai/hotspot/model-info` (and risk equivalent) — confirm `prediction_mode` stays `ML` when expected; `training_metrics` sane.
-- **Disk/log usage:** `logs/saksha_backend.log` size/rotation; Docker volumes.
+- **Disk/log usage:** `logs/drishyam_backend.log` size/rotation; Docker volumes.
 - **Error logs:** grep for `ERROR`, `PRODUCTION CONFIG`, `migration skipped`, `[prewarm] … skipped`, `STORAGE`.
 - **Failed jobs/imports:** `/api/v2/data-import/jobs` → look for non-`promoted`/`review` states; quality grades.
 - **Alert generation:** `/api/v2/alerts/*` and notifications; confirm alert statuses move to acknowledged/resolved.
@@ -735,7 +735,7 @@ Use only what the system actually exposes:
 |---|---|---|
 | `GET /health/live`, `/health/ready` | Liveness/readiness | Backend HTTP |
 | Backend console/stdout | Runtime logs (loguru) | uvicorn/container |
-| `logs/saksha_backend.log` | Rotated file log (10 MB / 30 d) | Filesystem |
+| `logs/drishyam_backend.log` | Rotated file log (10 MB / 30 d) | Filesystem |
 | Docker | `docker compose ps`, `docker logs backend`, volume usage | Docker |
 | Neo4j Browser `:7474` | Graph DB status | Neo4j |
 | PostgreSQL | `pg_isready`, `pg_stat_activity` | Postgres |
@@ -750,7 +750,7 @@ Use only what the system actually exposes:
 
 ## 29. Logging
 
-- **Where stored:** stdout (console) + `logs/saksha_backend.log` (created relative to the working directory, i.e. `backend/` when run there; in the single-image container it's under `/app/logs/`). In Docker, `docker logs saksha_backend` / `docker logs saksha`.
+- **Where stored:** stdout (console) + `logs/drishyam_backend.log` (created relative to the working directory, i.e. `backend/` when run there; in the single-image container it's under `/app/logs/`). In Docker, `docker logs drishyam_backend` / `docker logs drishyam`.
 - **Levels:** `INFO` by default; `DEBUG` only when `APP_DEBUG`/`DEBUG` are enabled (envs force-disabled in production).
 - **Useful error patterns to watch:**
   - `PRODUCTION CONFIG ERROR|WARNING` — config guardrail.
@@ -861,7 +861,7 @@ Operator workflow: **upload → preview (validate/map) → commit (stage) → qu
 2. **Environment:** copy `backend/.env.example` → `backend/.env`, understand every variable (§4). Know dev vs prod (§5) and that production startup self-validates (§26).
 3. **Deploy once** in a staging environment following §6 end-to-end.
 4. **Start/stop/restart** each service (§7–§8) and confirm health (§9).
-5. **Logs:** know stdout + `logs/saksha_backend.log` (§29) and which patterns matter.
+5. **Logs:** know stdout + `logs/drishyam_backend.log` (§29) and which patterns matter.
 6. **Database:** connect, inspect schema, back up and restore (§11–§14). Know Supabase specifics (§15).
 7. **Neo4j:** start, browse, sync, verify consistency, handle outage (§16–§17).
 8. **Frontend:** build, deploy, routing requirements, failure diagnosis (§18–§20).

@@ -153,7 +153,7 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                   boxShadow: '0 0 38px rgba(47, 127, 224, 0.24)',
                 }}
               >
-                <img src="/logo.svg" alt="Saksha emblem" className="h-[68%] w-[68%]" draggable={false} />
+                <img src="/logo.svg" alt="Drishyam emblem" className="h-[68%] w-[68%]" draggable={false} />
               </div>
 
               <div className="min-w-0">
@@ -161,7 +161,7 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                   className="lp-gradient-title font-extrabold uppercase leading-none tracking-[0.1em]"
                   style={{ fontSize: 'clamp(28px, 3.4vw, 40px)' }}
                 >
-                  Saksha
+                  Drishyam
                 </h1>
                 <p
                   className="mt-2 font-mono uppercase tracking-[0.32em]"

@@ -312,7 +312,7 @@ export const PathFinderPanel: React.FC<PathFinderPanelProps> = ({
           <div className="p-3 rounded-lg bg-cyan-500/5 border border-dashed border-cyan-500/25 text-[10px] text-[var(--text-muted)] flex items-start gap-2">
             <User className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cyan-400" />
             <span>
-              Pick two people, officers or victims from the current filtered network. Saksha traces shared-FIR
+              Pick two people, officers or victims from the current filtered network. Drishyam traces shared-FIR
               participation hop-by-hop and always stays inside your active{' '}
               <span className="text-cyan-300 font-bold">search filters</span>.
             </span>

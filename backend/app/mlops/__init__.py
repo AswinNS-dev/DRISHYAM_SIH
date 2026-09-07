@@ -1,4 +1,4 @@
-"""MLOps orchestration for Saksha AI models."""
+"""MLOps orchestration for Drishyam AI models."""
 
 from .deploy import build_deployment_plan, rollback_release
 from .drift import DriftReport, compare_distributions

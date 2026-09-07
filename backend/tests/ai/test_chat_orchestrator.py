@@ -1,4 +1,4 @@
-"""Tests for the Saksha AI Chat Orchestrator pipeline components."""
+"""Tests for the Drishyam AI Chat Orchestrator pipeline components."""
 from __future__ import annotations
 
 import os
@@ -386,8 +386,8 @@ class TestContextBuilder:
         entities = ExtractedEntities(fir_number="2026/104")
         ctx = self.builder.build(results, entities, "Show FIR 2026/104")
         assert "FIR 2026/104" in ctx.context_block
-        assert "Saksha PostgreSQL" in ctx.context_block
-        assert "Saksha Neo4j" in ctx.context_block
+        assert "Drishyam PostgreSQL" in ctx.context_block
+        assert "Drishyam Neo4j" in ctx.context_block
         assert len(ctx.sources) == 2
         assert len(ctx.citations) == 2
 
@@ -395,7 +395,7 @@ class TestContextBuilder:
         results = []
         entities = ExtractedEntities()
         ctx = self.builder.build(results, entities, "hello")
-        assert "Saksha" in ctx.context_block
+        assert "Drishyam" in ctx.context_block
         assert len(ctx.sources) == 0
 
     def test_build_failed_results(self):
@@ -404,11 +404,11 @@ class TestContextBuilder:
         ]
         entities = ExtractedEntities()
         ctx = self.builder.build(results, entities, "predict")
-        assert "Saksha" in ctx.context_block
+        assert "Drishyam" in ctx.context_block
 
     def test_system_prompt_present(self):
         ctx = self.builder.build([], ExtractedEntities(), "test")
-        assert "SAKSHA AI" in ctx.system_prompt
+        assert "DRISHYAM AI" in ctx.system_prompt
         assert "NEVER fabricate" in ctx.system_prompt
 
     def test_summary_includes_entities(self):

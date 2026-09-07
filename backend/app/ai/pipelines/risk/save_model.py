@@ -1,5 +1,5 @@
 """
-SAKSHA – Risk Model Artifact Serialization
+DRISHYAM – Risk Model Artifact Serialization
 
 Saves both DistrictRiskModel and DistrictForecastModel artifacts plus metadata JSON.
 No training. No inference. No FastAPI.
@@ -43,7 +43,7 @@ def save_artifacts(
     forecast_model.save_model(MODEL_DIR / "forecast_model.pkl")
 
     metadata = {
-        "model_name": "SAKSHA District Risk & Forecast",
+        "model_name": "DRISHYAM District Risk & Forecast",
         "risk_algorithm": "RandomForest",
         "forecast_algorithm": "XGBoost",
         "version": datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"),

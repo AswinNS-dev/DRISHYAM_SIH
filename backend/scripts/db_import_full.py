@@ -7,7 +7,7 @@ Usage:
   3. Update CONN below with your new credentials
   4. py -3.12 scripts/db_import_full.py
 
-Input: backups/saksha_full_dump.sql
+Input: backups/drishyam_full_dump.sql
 """
 import os
 import sys
@@ -17,7 +17,7 @@ import psycopg2
 import time
 
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
-DUMP_FILE = os.path.join(BACKUP_DIR, 'saksha_full_dump.sql')
+DUMP_FILE = os.path.join(BACKUP_DIR, 'drishyam_full_dump.sql')
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)

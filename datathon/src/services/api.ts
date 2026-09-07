@@ -19,8 +19,8 @@ export function setEmulatorActive(active: boolean) {
   }
 }
 
-const ACCESS_TOKEN_KEY = 'saksha_access_token';
-const REFRESH_TOKEN_KEY = 'saksha_refresh_token';
+const ACCESS_TOKEN_KEY = 'drishyam_access_token';
+const REFRESH_TOKEN_KEY = 'drishyam_refresh_token';
 
 export interface LoginResponse {
   access_token: string;
@@ -418,6 +418,8 @@ export interface CentralityMetric {
   category: string;
   degree_centrality: number;
   betweenness_score: number;
+  closeness_centrality?: number;
+  pagerank_score?: number;
   is_bridge_node: boolean;
   riskScore: number;
 }
@@ -428,6 +430,68 @@ export interface LinkAnalysisData {
   top_broker_nodes: CentralityMetric[];
   high_impact_nodes: CentralityMetric[];
   bridge_nodes: CentralityMetric[];
+}
+
+// ── SIH26189: hidden multi-hop (friends-of-friends) network discovery ───────
+
+export interface HiddenConnectionEntity {
+  id: string;
+  name: string;
+  category: string;
+  riskScore: number;
+}
+
+export interface HiddenConnectionHop {
+  from: string;
+  to: string;
+  from_name: string;
+  to_name: string;
+  relationship: string;
+  fir_numbers: string[];
+  shared_record_count: number;
+}
+
+export interface HiddenConnection {
+  source: HiddenConnectionEntity;
+  target: HiddenConnectionEntity;
+  hops: number;
+  intermediates: HiddenConnectionEntity[];
+  chain: string[];
+  label: string;
+  connection_status: string;
+  strength: number;
+  supporting_firs: string[];
+  hop_evidence: HiddenConnectionHop[];
+  explanation: string;
+}
+
+export interface HiddenNetworkResponse {
+  found: number;
+  connections: HiddenConnection[];
+  explanation: string;
+}
+
+export async function getHiddenNetworks(
+  minHops: number,
+  maxHops: number,
+  filters?: NetworkFilterParams
+): Promise<HiddenNetworkResponse> {
+  const params: Record<string, string | number> = {
+    min_hops: minHops,
+    max_hops: maxHops,
+    limit: 50,
+  };
+  if (filters) {
+    if (filters.criminalName) params.criminal_name = filters.criminalName;
+    if (filters.crimeTypes?.length) params.crime_type = filters.crimeTypes.join(',');
+    if (filters.districts?.length) params.district = filters.districts.join(',');
+    if (filters.policeStations?.length) params.police_station = filters.policeStations.join(',');
+    if (filters.firNumbers?.length) params.fir_number = filters.firNumbers.join(',');
+    if (filters.victimName) params.victim_name = filters.victimName;
+    if (filters.dateFrom) params.date_from = filters.dateFrom;
+    if (filters.dateTo) params.date_to = filters.dateTo;
+  }
+  return apiRequest<HiddenNetworkResponse>(`/network/hidden-networks${buildQueryString(params)}`);
 }
 
 export interface AIGraphInsightData {
@@ -911,6 +975,145 @@ export async function getEvidenceStats() {
 
 export async function getRecentIncidents() {
   return apiRequest<RecentIncident[]>('/dashboard/recent-incidents');
+}
+
+// ── SIH26189: command-center intelligence overview (grounded, rule-based) ───
+
+export interface IntelligenceOverviewEntity {
+  id: string;
+  name: string;
+  status: string;
+  fir_count: number;
+  risk_score: number;
+}
+
+export interface IntelligenceOverviewResponse {
+  entity_counts: Record<string, number>;
+  active_investigations: number;
+  recent_cases: Array<{ id: string; case_number: string; district: string | null; occurred_at: string | null; priority: string | null }>;
+  high_risk_entities: IntelligenceOverviewEntity[];
+  influential_entities: Array<{ entity_type: string; entity_id: string; degree: number; note: string }>;
+  recent_relationships: Array<{
+    id: string;
+    source_type: string;
+    source_id: string;
+    target_type: string;
+    target_id: string;
+    relationship_type: string;
+    provenance: string;
+    confidence: number;
+    created_at: string | null;
+  }>;
+  network_growth: Array<{ week_start: string; new_relationships: number }>;
+  temporal_activity: Array<{ date: string; firs: number }>;
+  hotspot_districts: Array<{ district: string; fir_count: number; window_days: number }>;
+  cross_case_connections: number;
+  anomalies: Array<{ id: string; anomaly_type: string; title: string; severity: string; what_detected: string | null; why_unusual: string | null; detected_at: string | null }>;
+  suspicious_patterns: Array<{ id: string; pattern_type: string; title: string; severity: string; confidence: number; description: string }>;
+  ingestion_summary: { status_counts: Record<string, number>; total_jobs: number; note: string };
+  ai_insights: Array<{ id: string; label: string; title: string; detail: string; basis: Record<string, unknown> }>;
+  generated_at: string;
+  data_mode: string;
+}
+
+export async function getIntelligenceOverview(): Promise<IntelligenceOverviewResponse> {
+  return apiRequest<IntelligenceOverviewResponse>('/investigation-hub/intelligence-overview');
+}
+
+// ── SIH26189: admin data-ingestion API ───────────────────────────────────────
+
+export interface IngestionSourceType {
+  source_type: string;
+  label: string;
+  required_fields: string[];
+  optional_fields: string[];
+}
+
+export interface DataSourceInfo {
+  id: string;
+  name: string;
+  source_type: string;
+  description: string | null;
+  contact: string | null;
+  is_active: boolean;
+  created_at: string | null;
+}
+
+export interface IngestionSourcesResponse {
+  supported_source_types: IngestionSourceType[];
+  job_statuses: string[];
+  sources: DataSourceInfo[];
+}
+
+export interface IngestionJobRecord {
+  id: string;
+  source_type: string;
+  source_name: string | null;
+  status: string;
+  total_records: number;
+  valid_records: number;
+  invalid_records: number;
+  relationships_created: number;
+  entities_created: number;
+  error_summary: Array<{ row: number; errors: string[] }>;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface IngestionJobDetail extends IngestionJobRecord {
+  records: Array<{
+    id: string;
+    external_ref: string | null;
+    title: string | null;
+    processing_status: string;
+    record_status: string;
+    structured_data: Record<string, unknown> | null;
+    ingested_at: string | null;
+  }>;
+}
+
+export async function getIngestionSources(): Promise<IngestionSourcesResponse> {
+  return apiRequest<IngestionSourcesResponse>('/ingestion/sources');
+}
+
+export async function createDataSource(payload: { name: string; source_type: string; description?: string; contact?: string }): Promise<{ id: string; name: string; source_type: string }> {
+  return apiRequest<{ id: string; name: string; source_type: string }>('/ingestion/sources', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createIngestionJob(payload: {
+  source_type: string;
+  source_name?: string;
+  records: Array<Record<string, unknown>>;
+}): Promise<IngestionJobRecord> {
+  return apiRequest<IngestionJobRecord>('/ingestion/jobs', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getIngestionJobs(page = 1, statusFilter?: string): Promise<{ total: number; page: number; page_size: number; results: IngestionJobRecord[] }> {
+  const params = new URLSearchParams({ page: String(page), page_size: '20' });
+  if (statusFilter) params.set('status', statusFilter);
+  return apiRequest<{ total: number; page: number; page_size: number; results: IngestionJobRecord[] }>(`/ingestion/jobs?${params.toString()}`);
+}
+
+export async function getIngestionJob(jobId: string): Promise<IngestionJobDetail> {
+  return apiRequest<IngestionJobDetail>(`/ingestion/jobs/${encodeURIComponent(jobId)}`);
+}
+
+export async function archiveIngestionJob(jobId: string): Promise<IngestionJobRecord> {
+  return apiRequest<IngestionJobRecord>(`/ingestion/jobs/${encodeURIComponent(jobId)}/archive`, { method: 'POST' });
+}
+
+export async function getIngestionOverview(): Promise<{
+  status_counts: Record<string, number>;
+  totals: { jobs: number; relationships: number; suspicious_patterns: number; open_anomalies: number };
+  recent_jobs: IngestionJobRecord[];
+}> {
+  return apiRequest('/ingestion/overview');
 }
 
 export async function getForecast() {
@@ -3147,252 +3350,6 @@ export async function searchInvestigationImage() {
   });
 }
 
-// --- Issue #225: Data Security / Identity Resolution ----------------------
-// Fake/duplicate record detection: duplicate-identity leads, proxy patterns,
-// integrity alerts, and an entity↔identity graph. All raw values are hashed /
-// masked server-side; review decisions are audited.
-
-export interface IdentityDashboardResponse {
-  records_analyzed: number;
-  possible_duplicates: number;
-  identity_conflicts: number;
-  identifier_reuse_alerts: number;
-  possible_aliases: number;
-  possible_proxy_relationships: number;
-  critical_reviews: number;
-  open_reviews: number;
-  assessment_counts: Record<string, number>;
-  proxy_pattern_counts: Record<string, number>;
-}
-
-export interface IdentityRelationship {
-  id: string;
-  source_entity_type: string;
-  source_entity_id: string;
-  target_entity_type: string;
-  target_entity_id: string;
-  source_name: string | null;
-  target_name: string | null;
-  relationship_type: string;
-  assessment: string;
-  confidence: number;
-  confidence_breakdown: Record<string, unknown> | null;
-  evidence_summary: { supporting_count: number; counter_count: number; groups: string[] } | null;
-  status: string;
-  reviewed_by_id: string | null;
-  reviewed_at: string | null;
-  review_decision: string | null;
-  review_note: string | null;
-  created_at: string | null;
-}
-
-export interface IdentityRelationshipDetail extends Omit<IdentityRelationship, 'source_name' | 'target_name'> {
-  source: { entity_type: string; entity_id: string; name: string | null };
-  target: { entity_type: string; entity_id: string; name: string | null };
-  evidence: Array<{
-    id: string;
-    evidence_group: string;
-    signal_type: string;
-    weight_delta: number;
-    confidence: number;
-    severity: string;
-    source_label: string | null;
-  }>;
-  conflicts: Array<Record<string, unknown>>;
-}
-
-export interface IntegrityAlertRecord {
-  id: string;
-  alert_type: string;
-  severity: string;
-  entity_a_type: string | null;
-  entity_a_id: string | null;
-  entity_b_type: string | null;
-  entity_b_id: string | null;
-  identifier_type: string | null;
-  value_hash: string | null;
-  display_value: string | null;
-  confidence: number;
-  description: string;
-  observation_count: number;
-  status: string;
-  source_summary: Record<string, unknown> | null;
-  created_at: string | null;
-}
-
-export interface ProxyPatternRecord {
-  id: string;
-  rule_id: string;
-  rule_version: string;
-  pattern: string;
-  severity: string;
-  confidence: number;
-  assessment: string;
-  entities: Array<{ entity_type: string; entity_id: string; name: string }>;
-  evidence: Array<{ description: string; rule_id: string }>;
-  counter_evidence: string[];
-  time_window: string | null;
-  explanation: string;
-  possible_explanations: string[];
-  observation_count: number;
-  status: string;
-  reviewed_by_id: string | null;
-  reviewed_at: string | null;
-  review_decision: string | null;
-  review_note: string | null;
-  created_at: string | null;
-}
-
-export interface IdentityGraphNode {
-  id: string;
-  entity_type: string;
-  entity_id: string;
-  name: string;
-  aliases: string[];
-  identifiers: Array<{ type: string; display: string }>;
-}
-
-export interface IdentityGraphEdge {
-  source: string;
-  target: string;
-  relationship_type: string;
-  relationship_id: string;
-  confidence: number;
-  assessment: string;
-  evidence_count: number;
-  status: string;
-}
-
-export interface IdentityGraphResponse {
-  nodes: IdentityGraphNode[];
-  edges: IdentityGraphEdge[];
-}
-
-export interface IdentitySearchItem {
-  entity_type: string;
-  entity_id: string;
-  name: string;
-  aliases: string[];
-  identifiers: string[];
-  match_type: string;
-  confidence: number;
-}
-
-export interface IdentitySearchResponse {
-  exact: IdentitySearchItem[];
-  probable: IdentitySearchItem[];
-  possible: IdentitySearchItem[];
-}
-
-export interface IdentityRunSummary {
-  profiles_analyzed: number;
-  candidates_generated: number;
-  relationships_proposed: number;
-  identifier_links_written: number;
-  identifier_reuse_alerts: number;
-  proxy_patterns_detected: number;
-}
-
-export interface IdentityListResponse<T> {
-  total: number | null;
-  results: T[];
-}
-
-export async function getIdentityDashboard(): Promise<IdentityDashboardResponse> {
-  return apiRequest<IdentityDashboardResponse>('/identity/dashboard');
-}
-
-export async function listIdentityRelationships(params?: {
-  status?: string;
-  assessment?: string;
-  limit?: number;
-}): Promise<IdentityListResponse<IdentityRelationship>> {
-  return apiRequest<IdentityListResponse<IdentityRelationship>>(`/identity/relationships${buildQueryString(params)}`);
-}
-
-export async function getIdentityRelationship(id: string): Promise<IdentityRelationshipDetail> {
-  return apiRequest<IdentityRelationshipDetail>(`/identity/relationships/${encodeURIComponent(id)}`);
-}
-
-export async function reviewIdentityRelationship(
-  id: string,
-  decision: string,
-  note?: string,
-): Promise<IdentityRelationship> {
-  return apiRequest<IdentityRelationship>(`/identity/relationships/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
-    method: 'POST',
-  });
-}
-
-export async function listIdentityAlerts(params?: {
-  status?: string;
-  alert_type?: string;
-  limit?: number;
-}): Promise<IdentityListResponse<IntegrityAlertRecord>> {
-  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/alerts${buildQueryString(params)}`);
-}
-
-export async function reviewIdentityAlert(id: string, decision: string, note?: string): Promise<IntegrityAlertRecord> {
-  return apiRequest<IntegrityAlertRecord>(`/identity/alerts/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
-    method: 'POST',
-  });
-}
-
-export async function listIdentifierReuse(params?: { status?: string; limit?: number }): Promise<IdentityListResponse<IntegrityAlertRecord>> {
-  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/identifiers/reuse${buildQueryString(params)}`);
-}
-
-export async function listIdentityAliases(params?: { entity_type?: string; entity_id?: string; limit?: number }) {
-  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/aliases${buildQueryString(params)}`);
-}
-
-export async function listIdentityIdentifiers(params?: {
-  entity_type?: string;
-  entity_id?: string;
-  identifier_type?: string;
-  limit?: number;
-}) {
-  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/identifiers${buildQueryString(params)}`);
-}
-
-export async function getIdentityGraph(): Promise<IdentityGraphResponse> {
-  return apiRequest<IdentityGraphResponse>('/identity/graph');
-}
-
-export async function searchIdentity(q: string): Promise<IdentitySearchResponse> {
-  return apiRequest<IdentitySearchResponse>(`/identity/search${buildQueryString({ q })}`);
-}
-
-export async function getProxyRules() {
-  return apiRequest<{ rules: Array<Record<string, unknown>>; thresholds: Record<string, unknown> }>('/identity/proxy/rules');
-}
-
-export async function listProxyPatterns(params?: {
-  status?: string;
-  severity?: string;
-  limit?: number;
-}): Promise<IdentityListResponse<ProxyPatternRecord>> {
-  return apiRequest<IdentityListResponse<ProxyPatternRecord>>(`/identity/proxy${buildQueryString(params)}`);
-}
-
-export async function getProxyPattern(id: string): Promise<ProxyPatternRecord> {
-  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}`);
-}
-
-export async function reviewProxyPattern(id: string, decision: string, note?: string): Promise<ProxyPatternRecord> {
-  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
-    method: 'POST',
-  });
-}
-
-export async function runIdentityResolution(): Promise<IdentityRunSummary> {
-  return apiRequest<IdentityRunSummary>('/identity/run', { method: 'POST' });
-}
-
-export async function runProxyDetection(): Promise<{ patterns_detected: number; patterns: ProxyPatternRecord[] }> {
-  return apiRequest<{ patterns_detected: number; patterns: ProxyPatternRecord[] }>('/identity/proxy/run', { method: 'POST' });
-}
-
 // ── Intelligence Engine ─────────────────────────────────────────────────────
 
 export interface IntelligenceConnection {
@@ -3519,87 +3476,12 @@ export async function buildIntelligence(
   });
 }
 
-export async function searchIntelligenceEntities(
-  query: string,
-  entityType?: string
-): Promise<Array<{ id: string; type: string; name: string; subtitle: string }>> {
-  const params = new URLSearchParams({ q: query });
-  if (entityType) params.set('entity_type', entityType);
-  const response = await apiRequest<{ results: Array<{ id: string; type: string; name: string; subtitle: string }> }>(
-    `/intelligence/entity-search?${params.toString()}`
-  );
-  return response.results || [];
-}
-
-export interface IntelligenceHistoryItem {
-  id: string;
-  entity_type: string;
-  entity_id: string;
-  entity_label: string;
-  summary: string | null;
-  connections: number;
-  leads: number;
-  threads: number;
-  timeline_events: number;
-  confirmed: number;
-  probable: number;
-  possible: number;
-  created_at: string | null;
-}
-
-export async function getIntelligenceHistory(limit = 20): Promise<IntelligenceHistoryItem[]> {
-  return apiRequest<IntelligenceHistoryItem[]>(
-    `/intelligence/history?limit=${limit}`
-  );
-}
-
-export async function deleteIntelligenceHistory(runId: string): Promise<{ deleted: boolean }> {
-  return apiRequest<{ deleted: boolean }>(`/intelligence/history/${runId}`, {
-    method: 'DELETE',
-  });
-}
-
-// ── Intelligence Fusion & Action Pipeline ─────────────────────────────────
-
-export interface ChangeFromBaseline {
-  baseline_count: number;
-  current_count: number;
-  change_percentage: number;
-  direction: string;
-  baseline_window_days?: number;
-  current_window_days?: number;
-}
-
 export interface SupportingSignal {
   signal_type: string;
   description: string;
   score: number | null;
   status: string;
   evidence_details: Record<string, any>;
-}
-
-export interface ForecastResult {
-  predicted_crime_count: number;
-  lower_bound: number | null;
-  upper_bound: number | null;
-  trend: string;
-  prediction_mode: string;
-  period: string;
-}
-
-export interface RecommendedActionInput {
-  title: string;
-  action_type: string;
-  description: string;
-  priority: string;
-  suggested_intervention: {
-    district: string;
-    intervention_type: string;
-    title: string;
-    description: string;
-    started_at?: string;
-    status?: string;
-  } | null;
 }
 
 export interface UnifiedIntelligenceResult {
@@ -3613,14 +3495,41 @@ export interface UnifiedIntelligenceResult {
   };
   affected_h3_cells: string[];
   time_window: string;
-  change_from_baseline: ChangeFromBaseline;
+  change_from_baseline: {
+    baseline_count: number;
+    current_count: number;
+    change_percentage: number;
+    direction: string;
+    baseline_window_days?: number;
+    current_window_days?: number;
+  };
   risk_score: number;
-  forecast: ForecastResult | null;
+  forecast: {
+    predicted_crime_count: number;
+    lower_bound: number | null;
+    upper_bound: number | null;
+    trend: string;
+    prediction_mode: string;
+    period: string;
+  } | null;
   confidence: number;
   supporting_signals: SupportingSignal[];
   related_fir_ids: string[];
   related_entity_ids: string[];
-  recommended_action_input: RecommendedActionInput;
+  recommended_action_input: {
+    title: string;
+    action_type: string;
+    description: string;
+    priority: string;
+    suggested_intervention: {
+      district: string;
+      intervention_type: string;
+      title: string;
+      description: string;
+      started_at?: string;
+      status?: string;
+    } | null;
+  };
   ml_status: string;
   model_name: string;
   model_version: string;
@@ -3628,228 +3537,6 @@ export interface UnifiedIntelligenceResult {
   explanation: string;
   contributing_analytics: Record<string, any>;
   data_provenance: string;
-}
-
-export interface IntelligenceFusionResponse {
-  total: number;
-  generated_at: string;
-  patterns: UnifiedIntelligenceResult[];
-  thresholds_applied: Record<string, any>;
-}
-
-export interface FusionThresholdsInput {
-  min_anomaly_score?: number;
-  min_percentage_change?: number;
-  min_risk_score?: number;
-  min_confidence?: number;
-  min_supporting_signals?: number;
-  min_current_incidents?: number;
-  current_window_days?: number;
-  baseline_window_days?: number;
-}
-
-export interface EmergingPatternsParams {
-  district?: string;
-  category?: string;
-  min_signals?: number;
-  min_risk?: number;
-  min_confidence?: number;
-  time_window_days?: number;
-}
-
-export async function getEmergingPatterns(params?: EmergingPatternsParams): Promise<IntelligenceFusionResponse> {
-  const qs = new URLSearchParams();
-  if (params) {
-    if (params.district) qs.set('district', params.district);
-    if (params.category) qs.set('category', params.category);
-    if (params.min_signals) qs.set('min_signals', String(params.min_signals));
-    if (params.min_risk) qs.set('min_risk', String(params.min_risk));
-    if (params.min_confidence) qs.set('min_confidence', String(params.min_confidence));
-    if (params.time_window_days) qs.set('time_window_days', String(params.time_window_days));
-  }
-  const q = qs.toString();
-  return apiRequest<IntelligenceFusionResponse>(`/intelligence/emerging-patterns${q ? `?${q}` : ''}`);
-}
-
-export async function runIntelligenceFusion(payload?: {
-  district?: string;
-  category?: string;
-  thresholds?: FusionThresholdsInput;
-}): Promise<IntelligenceFusionResponse> {
-  return apiRequest<IntelligenceFusionResponse>('/intelligence/fuse', {
-    method: 'POST',
-    body: JSON.stringify(payload || {}),
-  });
-}
-
-export async function getEmergingPatternById(intelligenceId: string): Promise<UnifiedIntelligenceResult> {
-  return apiRequest<UnifiedIntelligenceResult>(`/intelligence/emerging-patterns/${intelligenceId}`);
-}
-
-export async function dispatchIntelligenceAction(
-  intelligenceId: string,
-  payload?: { title?: string; description?: string; intervention_type?: string }
-): Promise<{
-  dispatched: boolean;
-  intelligence_id: string;
-  intervention_id: string;
-  district: string;
-  intervention_type: string;
-  title: string;
-  status: string;
-}> {
-  return apiRequest(`/intelligence/emerging-patterns/${intelligenceId}/action`, {
-    method: 'POST',
-    body: JSON.stringify(payload || {}),
-  });
-}
-
-// ── Pattern-to-Network Investigation & Evidence Intelligence (issue #250) ───
-
-export type VerificationState = 'VERIFIED' | 'POTENTIAL' | 'DEMO' | 'RESTRICTED' | 'UNVERIFIED';
-
-export interface IntelligenceInvestigationFIR {
-  id: string;
-  fir_number: string;
-  complainant_name: string;
-  complainant_contact?: string | null;
-  sections?: string | null;
-  status: string;
-  filed_at?: string | null;
-  narrative?: string | null;
-  case_id?: string | null;
-  case_number?: string | null;
-  verification_status: VerificationState;
-  provenance?: string;
-  is_demo_derived: boolean;
-  is_restricted: boolean;
-  evidence_count: number;
-}
-
-export interface IntelligenceInvestigationCase {
-  id: string;
-  case_number: string;
-  category?: string | null;
-  district?: string | null;
-  station?: string | null;
-  status: string;
-  priority?: string | null;
-  progress?: number | null;
-  occurred_at?: string | null;
-  description?: string | null;
-  mo_tags?: string | null;
-  fir_count: number;
-  evidence_count: number;
-  verification_status: VerificationState;
-  provenance?: string;
-  is_demo_derived: boolean;
-  is_restricted: boolean;
-}
-
-export interface IntelligenceInvestigationEntity {
-  id: string;
-  node_id: string;
-  entity_type: 'criminal' | 'victim';
-  name: string;
-  role?: string | null;
-  status?: string | null;
-  aliases?: string | null;
-  mo_summary?: string | null;
-  gang_affiliation?: string | null;
-  is_demo_derived: boolean;
-  provenance?: string;
-  verification_status: VerificationState;
-}
-
-export interface IntelligenceInvestigationMOMatch {
-  criminal_id?: string;
-  case_id?: string;
-  full_name?: string;
-  case_number?: string;
-  status?: string;
-  similarity_score: number;
-  similarity_percent: number;
-  match_level?: string;
-  confidence?: number | null;
-  is_confirmed_relationship?: boolean;
-  relationship_label?: string;
-  verification_status: VerificationState;
-  matching_factors?: string[];
-  divergent_factors?: string[];
-}
-
-export interface IntelligenceInvestigationMoMatches {
-  shared_tags: string[];
-  reference_case_id?: string | null;
-  suspects: IntelligenceInvestigationMOMatch[];
-  matching_cases: IntelligenceInvestigationMOMatch[];
-  method: string;
-}
-
-export interface IntelligenceInvestigationEvidence {
-  id: string;
-  title: string;
-  description?: string | null;
-  evidence_type: string;
-  status: string;
-  case_id: string;
-  case_number?: string | null;
-  fir_number?: string | null;
-  verification_status: VerificationState;
-  provenance?: string;
-  is_demo_derived: boolean;
-  is_restricted: boolean;
-  masked?: boolean;
-}
-
-export interface WhyThisInsight {
-  summary: string;
-  signals: Array<{ signal_type: string; description: string; status: string }>;
-  methodology: {
-    ml_status: string;
-    model_name: string;
-    model_version: string;
-    analytics_available: Record<string, string>;
-  };
-  data_sources: string[];
-  limitations: string[];
-  safety_note: string;
-}
-
-export interface IntelligenceInvestigationResponse {
-  intelligence_id: string;
-  pattern_type: string;
-  location: {
-    district?: string | null;
-    stations: string[];
-    latitude?: number | null;
-    longitude?: number | null;
-  };
-  risk_score?: number | null;
-  confidence?: number | null;
-  generated_at?: string | null;
-  firs: IntelligenceInvestigationFIR[];
-  cases: IntelligenceInvestigationCase[];
-  entities: IntelligenceInvestigationEntity[];
-  mo_matches: IntelligenceInvestigationMoMatches;
-  network: NetworkResponse;
-  evidence: IntelligenceInvestigationEvidence[];
-  why_this_insight: WhyThisInsight;
-  verification_summary: Record<VerificationState, number> | Record<string, number>;
-  access: { has_restricted_access: boolean };
-}
-
-export async function investigateIntelligencePattern(
-  intelligenceId: string,
-  pattern: UnifiedIntelligenceResult
-): Promise<IntelligenceInvestigationResponse> {
-  return apiRequest<IntelligenceInvestigationResponse>(
-    `/intelligence/emerging-patterns/${intelligenceId}/investigate`,
-    {
-      method: 'POST',
-      body: JSON.stringify(pattern),
-    }
-  );
 }
 
 // ── Face Recognition (Issue #228 — isolated DEMO enhancement) ──────────────

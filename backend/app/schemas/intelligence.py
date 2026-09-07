@@ -1,4 +1,4 @@
-"""Pydantic schemas for the SAKSHA Intelligence Fusion & Action Pipeline.
+"""Pydantic schemas for the DRISHYAM Intelligence Fusion & Action Pipeline.
 
 Defines structured types for multi-signal intelligence fusion:
 - Historical baseline comparison
@@ -68,7 +68,7 @@ class UnifiedIntelligenceResult(BaseModel):
     related_entity_ids: list[str] = Field(default_factory=list, description="IDs of linked criminals, suspects, victims")
     recommended_action_input: RecommendedAction = Field(..., description="Actionable recommendation")
     ml_status: str = Field("ML", description="Overall prediction mode: ML, FALLBACK, RULE_BASED, or HYBRID")
-    model_name: str = Field("SAKSHA Intelligence Fusion", description="Name of contributing model(s)")
+    model_name: str = Field("DRISHYAM Intelligence Fusion", description="Name of contributing model(s)")
     model_version: str = Field("v1.0", description="Model version(s)")
     detection_timestamp: str = Field(..., description="ISO timestamp of intelligence generation")
     explanation: str = Field("", description="Detailed narrative explaining why intelligence was generated")

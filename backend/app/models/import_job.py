@@ -1,7 +1,7 @@
 """Import jobs + staging area — audit trail for bulk data ingestion (CSV/XLSX).
 
 Issue 5 (P1): every external dataset passes through an import job and a row-level
-staging table before any record is promoted into trusted Saksha tables.
+staging table before any record is promoted into trusted Drishyam tables.
 
 Pipeline:
     upload -> import job (UPLOADED)
@@ -99,7 +99,7 @@ class ImportStagedRecord(Base, UUIDPKMixin):
 
     # Verbatim mapped source values (auditability: nothing silently dropped).
     raw_data: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON {source_header: value}
-    mapped_data: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON {saksha_column: normalized value}
+    mapped_data: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON {drishyam_column: normalized value}
 
     # valid | invalid | warning
     validation_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)

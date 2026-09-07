@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "======================================"
-echo "Starting Saksha Application..."
+echo "Starting DRISHYAM Application..."
 echo "======================================"
 
 mkdir -p /app/uploads

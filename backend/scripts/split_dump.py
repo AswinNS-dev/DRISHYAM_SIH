@@ -1,11 +1,11 @@
 """
-Split saksha_full_dump.sql into 4 files grouped by dependency order.
+Split drishyam_full_dump.sql into 4 files grouped by dependency order.
 Usage: python scripts/split_dump.py
-Output: backups/saksha_dump_part1.sql ... backups/saksha_dump_part4.sql
+Output: backups/drishyam_dump_part1.sql ... backups/drishyam_dump_part4.sql
 """
 import re, os
 
-DUMP = os.path.join(os.path.dirname(__file__), '..', 'backups', 'saksha_full_dump.sql')
+DUMP = os.path.join(os.path.dirname(__file__), '..', 'backups', 'drishyam_full_dump.sql')
 OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
 
 content = open(DUMP, encoding='utf-8').read()
@@ -73,9 +73,9 @@ groups = [group1, group2, group3, group4]
 footer = "\n-- End of dump\n"
 
 for part_num, group in enumerate(groups, 1):
-    out_path = os.path.join(OUT_DIR, f'saksha_dump_part{part_num}.sql')
+    out_path = os.path.join(OUT_DIR, f'drishyam_dump_part{part_num}.sql')
     with open(out_path, 'w', encoding='utf-8') as f:
-        f.write(f"-- Saksha Database Dump - Part {part_num}/4\n")
+        f.write(f"-- Drishyam Database Dump - Part {part_num}/4\n")
         f.write(f"-- Tables: {', '.join(group)}\n")
         if part_num == 1:
             # Write full header only in part 1

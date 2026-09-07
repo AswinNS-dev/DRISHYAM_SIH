@@ -8,7 +8,7 @@ Provides a fast, mobile-friendly entry point for KSP officers:
 * ``GET /investigation-hub/interpret`` — natural-language (English + Kannada +
   mixed) interpretation of a clue into structured retrieval filters.
 * ``POST /investigation-hub/image-search`` — honest image-search workflow.
-  No face-matching engine ships with SAKSHA, so this endpoint reports a safe
+  No face-matching engine ships with DRISHYAM, so this endpoint reports a safe
   "unavailable" state and never fabricates an identity match.
 
 Every result originates from the real, authorized database.  Nothing is invented.
@@ -37,7 +37,7 @@ from app.auth.rbac import (
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
-from app.models.fir import FIR
+from app.models.fir import FIR, FIRCriminalLink
 from app.models.location import Location
 from app.models.officer import Officer
 from app.models.victim import Victim
@@ -622,7 +622,7 @@ async def image_search(
 ):
     """Honest image investigation workflow.
 
-    SAKSHA does not ship a face-recognition / embedding matching engine and its
+    DRISHYAM does not ship a face-recognition / embedding matching engine and its
     authorized person image dataset is not enabled for reverse matching.  This
     endpoint therefore reports a safe *unavailable* state rather than fabricating
     identity matches.  The UI uses this to guide the officer to identifier search.
@@ -631,7 +631,7 @@ async def image_search(
         status="unavailable",
         message=(
             "Image/face matching is not currently available for this dataset. "
-            "SAKSHA does not fabricate identity matches."
+            "DRISHYAM does not fabricate identity matches."
         ),
         safe_fallback=(
             "Search by name, FIR number, case number, complaint number, "
@@ -639,4 +639,320 @@ async def image_search(
         ),
         upload_required=True,
         capability="none",
+    )
+
+
+# ---------------------------------------------------------------------------
+# SIH26189: Command Center intelligence overview
+# ---------------------------------------------------------------------------
+
+class IntelligenceOverview(BaseModel):
+    """High-level intelligence overview for the SIH26189 command center.
+
+    Every value is derived from stored records; the ``ai_insights`` block is
+    rule-based and each entry carries its grounding data.
+    """
+    entity_counts: dict[str, int] = {}
+    active_investigations: int = 0
+    recent_cases: list[dict[str, Any]] = []
+    high_risk_entities: list[dict[str, Any]] = []
+    influential_entities: list[dict[str, Any]] = []
+    recent_relationships: list[dict[str, Any]] = []
+    network_growth: list[dict[str, Any]] = []
+    temporal_activity: list[dict[str, Any]] = []
+    hotspot_districts: list[dict[str, Any]] = []
+    cross_case_connections: int = 0
+    anomalies: list[dict[str, Any]] = []
+    suspicious_patterns: list[dict[str, Any]] = []
+    ingestion_summary: dict[str, Any] = {}
+    ai_insights: list[dict[str, Any]] = []
+    generated_at: str = ""
+    data_mode: str = ""
+
+
+@router.get("/intelligence-overview", response_model=IntelligenceOverview)
+def intelligence_overview(
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Aggregated, fully data-grounded intelligence snapshot (SIH26189 §3)."""
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import func as sa_func
+
+    from app.models.intel_entity import (
+        EntityRelationship,
+        IngestionJob,
+        IntelAnomaly,
+        Organization,
+        PhoneNumber,
+        SuspiciousPattern,
+        Vehicle,
+        IntelEvent,
+    )
+
+    now = datetime.utcnow()
+
+    # --- Entity counts ------------------------------------------------------
+    entity_counts = {
+        "persons": db.query(Criminal).count(),
+        "victims": db.query(Victim).count(),
+        "organizations": db.query(Organization).count(),
+        "vehicles": db.query(Vehicle).count(),
+        "phone_numbers": db.query(PhoneNumber).count(),
+        "events": db.query(IntelEvent).count(),
+        "cases": db.query(CrimeCase).count(),
+        "relationships": db.query(EntityRelationship).filter(EntityRelationship.status == "active").count(),
+    }
+
+    # --- Active investigations ---------------------------------------------
+    active_investigations = db.query(CrimeCase).filter(CrimeCase.status == "under_investigation").count()
+    recent_case_rows = (
+        db.query(CrimeCase)
+        .options(selectinload(CrimeCase.location))
+        .filter(CrimeCase.status == "under_investigation")
+        .order_by(CrimeCase.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_cases = [
+        {
+            "id": str(c.id),
+            "case_number": c.case_number,
+            "district": c.location.district if c.location else None,
+            "occurred_at": c.occurred_at.isoformat() if c.occurred_at else None,
+            "priority": c.priority,
+        }
+        for c in recent_case_rows
+    ]
+
+    # --- High-risk entities (deterministic risk = 45 + 10 * FIR links) ------
+    risk_rows = (
+        db.query(Criminal, sa_func.count(FIRCriminalLink.fir_id).label("fir_count"))
+        .outerjoin(FIRCriminalLink, FIRCriminalLink.criminal_id == Criminal.id)
+        .group_by(Criminal.id)
+        .order_by(sa_func.count(FIRCriminalLink.fir_id).desc())
+        .limit(5)
+        .all()
+    )
+    high_risk_entities = [
+        {
+            "id": str(criminal.id),
+            "name": criminal.full_name,
+            "status": criminal.status,
+            "fir_count": fir_count,
+            "risk_score": min(100.0, 45.0 + fir_count * 10),
+        }
+        for criminal, fir_count in risk_rows
+        if fir_count > 0
+    ]
+
+    # --- Influential entities: highest degree in the relationship graph -----
+    degree_rows = (
+        db.query(
+            EntityRelationship.source_type,
+            EntityRelationship.source_id,
+            sa_func.count(EntityRelationship.id).label("deg"),
+        )
+        .filter(EntityRelationship.status == "active")
+        .group_by(EntityRelationship.source_type, EntityRelationship.source_id)
+        .order_by(sa_func.count(EntityRelationship.id).desc())
+        .limit(5)
+        .all()
+    )
+    influential_entities = [
+        {
+            "entity_type": stype,
+            "entity_id": str(sid),
+            "degree": deg,
+            "note": "Degree centrality in the intelligence relationship graph (entities with the most recorded links).",
+        }
+        for stype, sid, deg in degree_rows
+    ]
+
+    # --- Recently discovered relationships ----------------------------------
+    rel_rows = db.query(EntityRelationship).filter(EntityRelationship.status == "active").order_by(EntityRelationship.created_at.desc()).limit(8).all()
+    recent_relationships = [
+        {
+            "id": str(r.id),
+            "source_type": r.source_type,
+            "source_id": str(r.source_id),
+            "target_type": r.target_type,
+            "target_id": str(r.target_id),
+            "relationship_type": r.relationship_type,
+            "provenance": r.provenance,
+            "confidence": r.confidence,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rel_rows
+    ]
+
+    # --- Network growth: new relationships per week (last 6 weeks) ----------
+    network_growth = []
+    for week_offset in range(5, -1, -1):
+        week_start = now - timedelta(days=7 * week_offset + 7)
+        week_end = now - timedelta(days=7 * week_offset)
+        count = (
+            db.query(EntityRelationship)
+            .filter(EntityRelationship.created_at >= week_start, EntityRelationship.created_at < week_end)
+            .count()
+        )
+        network_growth.append({
+            "week_start": week_start.date().isoformat(),
+            "new_relationships": count,
+        })
+
+    # --- Temporal activity: FIRs per day (last 14 days) ---------------------
+    temporal_activity = []
+    for day_offset in range(13, -1, -1):
+        day_start = (now - timedelta(days=day_offset)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        count = db.query(FIR).filter(FIR.filed_at >= day_start, FIR.filed_at < day_end).count()
+        temporal_activity.append({"date": day_start.date().isoformat(), "firs": count})
+
+    # --- Geographic hotspots: districts by FIR volume (last 90 days) --------
+    hotspot_rows = (
+        db.query(Location.district, sa_func.count(FIR.id).label("fir_count"))
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .join(FIR, FIR.crime_case_id == CrimeCase.id)
+        .filter(FIR.filed_at >= now - timedelta(days=90))
+        .group_by(Location.district)
+        .order_by(sa_func.count(FIR.id).desc())
+        .limit(5)
+        .all()
+    )
+    hotspot_districts = [
+        {"district": district, "fir_count": count, "window_days": 90}
+        for district, count in hotspot_rows
+    ]
+
+    # --- Cross-case connections ---------------------------------------------
+    cross_rows = (
+        db.query(FIRCriminalLink.criminal_id)
+        .distinct()
+        .group_by(FIRCriminalLink.criminal_id)
+        .having(sa_func.count(sa_func.distinct(FIRCriminalLink.fir_id)) >= 2)
+        .all()
+    )
+    cross_case_connections = len(cross_rows)
+
+    # --- Anomalies + suspicious patterns (stored detections) ----------------
+    anomaly_rows = (
+        db.query(IntelAnomaly)
+        .filter(IntelAnomaly.status == "open")
+        .order_by(IntelAnomaly.detected_at.desc())
+        .limit(5)
+        .all()
+    )
+    anomalies = [
+        {
+            "id": str(a.id),
+            "anomaly_type": a.anomaly_type,
+            "title": a.title,
+            "severity": a.severity,
+            "what_detected": a.what_detected,
+            "why_unusual": a.why_unusual,
+            "detected_at": a.detected_at.isoformat() if a.detected_at else None,
+        }
+        for a in anomaly_rows
+    ]
+    pattern_rows = (
+        db.query(SuspiciousPattern)
+        .filter(SuspiciousPattern.status == "detected")
+        .order_by(SuspiciousPattern.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    suspicious_patterns = [
+        {
+            "id": str(p.id),
+            "pattern_type": p.pattern_type,
+            "title": p.title,
+            "severity": p.severity,
+            "confidence": p.confidence,
+            "description": (p.description or "")[:240],
+        }
+        for p in pattern_rows
+    ]
+
+    # --- Ingestion status (visible to all roles; raw records are admin-only) -
+    job_rows = db.query(IngestionJob.status).all()
+    ingestion_counts: dict[str, int] = {}
+    for (job_status,) in job_rows:
+        ingestion_counts[job_status] = ingestion_counts.get(job_status, 0) + 1
+    ingestion_summary = {
+        "status_counts": ingestion_counts,
+        "total_jobs": len(job_rows),
+        "note": "Structured data ingestion is performed by administrators only.",
+    }
+
+    # --- Rule-based AI insights (grounded; each carries its basis) ----------
+    ai_insights: list[dict[str, Any]] = []
+    top_risk = high_risk_entities[0] if high_risk_entities else None
+    if top_risk is not None:
+        ai_insights.append({
+            "id": "cc-insight-risk",
+            "label": "AI-generated insight (rule-based)",
+            "title": f"Highest-activity person of interest: {top_risk['name']}",
+            "detail": (
+                f"{top_risk['name']} appears in {top_risk['fir_count']} FIR record(s) "
+                f"(risk score {top_risk['risk_score']:.0f}/100). Review the associated network before further escalation."
+            ),
+            "basis": {"fir_count": top_risk["fir_count"], "source_table": "firs + fir_criminal_links"},
+        })
+    top_hotspot = hotspot_districts[0] if hotspot_districts else None
+    if top_hotspot is not None:
+        ai_insights.append({
+            "id": "cc-insight-hotspot",
+            "label": "AI-generated insight (rule-based)",
+            "title": f"Leading geographic hotspot: {top_hotspot['district']}",
+            "detail": (
+                f"{top_hotspot['district']} recorded {top_hotspot['fir_count']} FIR(s) in the last "
+                f"{top_hotspot['window_days']} days, the highest of any district in the current dataset."
+            ),
+            "basis": {"fir_count": top_hotspot["fir_count"], "window_days": top_hotspot["window_days"], "source_table": "firs + crime_cases + locations"},
+        })
+    if cross_case_connections > 0:
+        ai_insights.append({
+            "id": "cc-insight-crosscase",
+            "label": "AI-generated insight (rule-based)",
+            "title": f"{cross_case_connections} person(s) linked across multiple cases",
+            "detail": (
+                f"{cross_case_connections} person(s) appear in 2 or more distinct FIR records — "
+                "candidates for cross-case relationship analysis on the Network page."
+            ),
+            "basis": {"cross_case_persons": cross_case_connections, "source_table": "fir_criminal_links"},
+        })
+    growth_delta = network_growth[-1]["new_relationships"] - network_growth[-2]["new_relationships"] if len(network_growth) >= 2 else 0
+    if growth_delta > 0:
+        ai_insights.append({
+            "id": "cc-insight-growth",
+            "label": "AI-generated insight (rule-based)",
+            "title": "Relationship graph is growing",
+            "detail": (
+                f"{network_growth[-1]['new_relationships']} new relationship(s) were recorded in the latest week, "
+                f"{growth_delta} more than the previous week. Rising connectivity can precede coordinated activity."
+            ),
+            "basis": {"latest_week": network_growth[-1], "previous_week": network_growth[-2], "source_table": "entity_relationships"},
+        })
+
+    from app.core.data_mode import get_data_mode
+
+    return IntelligenceOverview(
+        entity_counts=entity_counts,
+        active_investigations=active_investigations,
+        recent_cases=recent_cases,
+        high_risk_entities=high_risk_entities,
+        influential_entities=influential_entities,
+        recent_relationships=recent_relationships,
+        network_growth=network_growth,
+        temporal_activity=temporal_activity,
+        hotspot_districts=hotspot_districts,
+        cross_case_connections=cross_case_connections,
+        anomalies=anomalies,
+        suspicious_patterns=suspicious_patterns,
+        ingestion_summary=ingestion_summary,
+        ai_insights=ai_insights,
+        generated_at=now.isoformat(),
+        data_mode=str(get_data_mode()),
     )

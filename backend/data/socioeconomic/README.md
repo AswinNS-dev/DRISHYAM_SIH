@@ -18,7 +18,7 @@ the bundled CSV is only the offline fallback.
 
 | Column | Meaning | Source |
 |---|---|---|
-| `district` | Karnataka district name (must match `locations.district`) | Saksha registry |
+| `district` | Karnataka district name (must match `locations.district`) | Drishyam registry |
 | `population_lakhs` | District population in lakhs | Census of India 2011, Primary Census Abstract |
 | `area_sq_km` | District area in sq km | Census of India 2011 |
 | `literacy_rate` | Effective literacy rate (%) | Census of India 2011 |
@@ -42,7 +42,7 @@ the bundled CSV is only the offline fallback.
 
 ## Versioning
 
-- `v1.0.0` (2026-08): initial release covering the 9 districts seeded in Saksha.
+- `v1.0.0` (2026-08): initial release covering the 9 districts seeded in Drishyam.
 - `v2.0.0` (2026-08): expanded to all 30/31 Karnataka districts (incl. Vijayanagara);
   corrected Mysuru/Kalaburagi area values to Census 2011 figures. Bump the version and
   update rows when official indicators are wired in.

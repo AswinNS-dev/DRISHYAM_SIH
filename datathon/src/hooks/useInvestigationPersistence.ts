@@ -23,8 +23,8 @@ export interface StoredInvestigation {
 }
 
 const RECENT_CAP = 12;
-const RECENT_KEY = 'saksha_investigation_recent_v2';
-const SAVED_KEY = 'saksha_investigation_saved_v2';
+const RECENT_KEY = 'drishyam_investigation_recent_v2';
+const SAVED_KEY = 'drishyam_investigation_saved_v2';
 
 function load(key: string): StoredInvestigation[] {
   try {

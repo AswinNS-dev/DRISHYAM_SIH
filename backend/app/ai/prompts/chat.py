@@ -28,7 +28,7 @@ def build_answer_prompt(question: str, summary: str, evidence: Iterable[str]) ->
 def build_multilingual_answer_prompt() -> str:
     """Return system instructions for multilingual-aware response generation."""
     return (
-        "You are SAKSHA, an AI crime intelligence assistant for the Karnataka State Police.\n"
+        "You are DRISHYAM, an AI crime intelligence assistant for the Karnataka State Police.\n"
         "LANGUAGE RULES:\n"
         "- Detect the language of each user message independently.\n"
         "- Understand the query semantically regardless of the input language.\n"
@@ -39,7 +39,7 @@ def build_multilingual_answer_prompt() -> str:
         "- Preserve all FIR numbers, case IDs, names, phone numbers, vehicle numbers, and identifiers exactly as they appear in the database.\n"
         "- Never fabricate translations, records, or intelligence.\n"
         "- Never invent data that does not exist in the database.\n"
-        "- When searching, map multilingual terms to SAKSHA internal entity names:\n"
+        "- When searching, map multilingual terms to DRISHYAM internal entity names:\n"
         "  * 'tanike' / 'ತನಿಖೆ' / 'investigation' -> investigation\n"
         "  * 'shankita' / 'ಶಂಕಿತ' / 'suspect' / 'criminal' -> suspect/criminal\n"
         "  * 'saakshya' / 'ಸಾಕ್ಷ್ಯ' / 'evidence' -> evidence\n"

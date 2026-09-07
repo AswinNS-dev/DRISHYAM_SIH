@@ -2,9 +2,9 @@
 
 Supports:
 
-- ``standard`` profile  : Saksha-native column templates (downloadable).
+- ``standard`` profile  : Drishyam-native column templates (downloadable).
 - ``cctns`` profile     : maps Crime and Criminal Tracking Network & Systems
-                          (CCTNS) extract column headers onto Saksha entities,
+                          (CCTNS) extract column headers onto Drishyam entities,
                           so state CCTNS dumps can be ingested without manual
                           re-keying. See CCTNS_ICJS_INTEROP.md at the repo root.
 
@@ -25,7 +25,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
-# Column templates per entity (standard Saksha profile).
+# Column templates per entity (standard Drishyam profile).
 # Each field spec: column name -> {required, type, choices}
 # ---------------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ ENTITY_SPECS: dict[str, dict[str, dict[str, Any]]] = {
 # ---------------------------------------------------------------------------
 # M2: CCTNS extract header mapping. Keys are common CCTNS/ICJS column names
 # (upper-snake, as produced by CCTNS "Search Arrested Person" / "Crime Details"
-# exports); values map to the standard Saksha columns above. Unmapped CCTNS
+# exports); values map to the standard Drishyam columns above. Unmapped CCTNS
 # headers are reported as ignored so nothing is silently dropped.
 # ---------------------------------------------------------------------------
 
@@ -638,7 +638,7 @@ _TEMPLATE_EXAMPLES: dict[str, list[dict[str, str]]] = {
 #
 #   upload -> import job -> staging -> mapping -> normalization -> validation
 #          -> deduplication -> reconciliation -> quality grading
-#          -> admin promotion -> trusted Saksha records (with provenance)
+#          -> admin promotion -> trusted Drishyam records (with provenance)
 #
 # A successfully parsed CSV row is NEVER treated as trusted operational
 # intelligence on its own: it must land in import_staging_records as a
@@ -853,7 +853,7 @@ def _dedupe_and_reconcile(
                     "duplicate",
                     "validated",
                     {"matched_case_id": str(match.id), "case_number": key},
-                    note="identical to trusted Saksha case — skipped",
+                    note="identical to trusted Drishyam case — skipped",
                 )
         return
 
@@ -1046,7 +1046,7 @@ def run_import_pipeline(
         ]
         if missing_required and parsed_rows:
             raise IngestError(
-                f"Import rejected: required Saksha columns have no source mapping: {', '.join(missing_required)}"
+                f"Import rejected: required Drishyam columns have no source mapping: {', '.join(missing_required)}"
             )
 
         job.status = "reconciling"

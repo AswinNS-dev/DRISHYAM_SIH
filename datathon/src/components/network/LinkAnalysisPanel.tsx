@@ -77,9 +77,9 @@ export const LinkAnalysisPanel: React.FC<LinkAnalysisPanelProps> = ({ data, load
           <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-2">
             <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-400" />
-              High Impact Hub Nodes (Degree Centrality)
+              High Influence Nodes (PageRank)
             </h4>
-            <span className="text-[9px] text-[var(--text-muted)]">Most connected</span>
+            <span className="text-[9px] text-[var(--text-muted)]">Influence score</span>
           </div>
 
           <div className="space-y-2.5">
@@ -87,15 +87,35 @@ export const LinkAnalysisPanel: React.FC<LinkAnalysisPanelProps> = ({ data, load
               <div key={node.node_id} className="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-card flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-[var(--text-primary)] uppercase">{node.node_name}</div>
-                  <div className="text-[10px] text-[var(--text-muted)] uppercase">{node.category} • Risk {node.riskScore}</div>
+                  <div className="text-[10px] text-[var(--text-muted)] uppercase">{node.category} • Risk {node.riskScore} • Degree {node.degree_centrality}</div>
                 </div>
                 <div className="text-right font-bold">
-                  <div className="text-xs text-amber-400">{node.degree_centrality}</div>
-                  <div className="text-[9px] text-[var(--text-muted)]">Degree</div>
+                  <div className="text-xs text-amber-400">{node.pagerank_score != null ? node.pagerank_score.toFixed(4) : node.degree_centrality}</div>
+                  <div className="text-[9px] text-[var(--text-muted)]">PageRank</div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Metric explanations — SIH26189 §16: explain the metric, not just the number */}
+      <div className="bg-[var(--bg-secondary)]/60 border border-[var(--border-secondary)] rounded-card p-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
+        <div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-blue-400">Degree centrality</div>
+          <p className="text-[9px] text-[var(--text-muted)] leading-relaxed mt-0.5">Share of the network directly connected to this entity. A person appearing in many FIRs with many co-accused scores high.</p>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-purple-400">Betweenness centrality</div>
+          <p className="text-[9px] text-[var(--text-muted)] leading-relaxed mt-0.5">How often this entity sits on the shortest connection path between other entities. High values mark brokers who bridge otherwise separate groups.</p>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-teal-400">Closeness centrality</div>
+          <p className="text-[9px] text-[var(--text-muted)] leading-relaxed mt-0.5">How quickly this entity can reach the rest of the network through shared-FIR chains. High values spread information or coordination fastest.</p>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-amber-400">PageRank influence</div>
+          <p className="text-[9px] text-[var(--text-muted)] leading-relaxed mt-0.5">Importance derived from being connected to other important entities — connections to well-linked suspects weigh more than connections to fringe records.</p>
         </div>
       </div>
 

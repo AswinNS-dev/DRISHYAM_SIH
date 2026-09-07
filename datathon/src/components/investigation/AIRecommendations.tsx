@@ -43,7 +43,7 @@ const AIRecommendations: React.FC<Props> = ({ recommendations }) => {
       </div>
 
       <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3">
-        <Sparkles className="w-4 h-4 text-[var(--accent-blue)] animate-pulse" /> SAKSHA AI Intelligence
+        <Sparkles className="w-4 h-4 text-[var(--accent-blue)] animate-pulse" /> DRISHYAM AI Intelligence
         <span className="ml-auto text-[8px] text-[var(--text-muted)] font-normal">{recommendations.length} INSIGHTS</span>
       </h3>
 

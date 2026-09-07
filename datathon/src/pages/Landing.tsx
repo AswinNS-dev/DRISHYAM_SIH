@@ -109,10 +109,10 @@ export const Landing: React.FC = () => {
       >
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border" style={{ background: 'var(--lp-accent-soft)', borderColor: 'var(--lp-border-strong)' }}>
-            <img src="/logo.svg" alt="Saksha emblem" className="h-[68%] w-[68%]" draggable={false} />
+            <img src="/logo.svg" alt="Drishyam emblem" className="h-[68%] w-[68%]" draggable={false} />
           </div>
           <div className="hidden sm:block">
-            <span className="block font-extrabold uppercase leading-none tracking-[0.2em]" style={{ color: 'var(--lp-text)', fontSize: 12 }}>Saksha</span>
+            <span className="block font-extrabold uppercase leading-none tracking-[0.2em]" style={{ color: 'var(--lp-text)', fontSize: 12 }}>Drishyam</span>
             <span className="block font-mono uppercase tracking-[0.24em]" style={{ color: 'var(--lp-teal)', fontSize: 7.5 }}>KSP Crime Intelligence</span>
           </div>
         </div>
@@ -175,7 +175,7 @@ export const Landing: React.FC = () => {
           className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed"
           style={{ color: 'var(--lp-text-2)' }}
         >
-          Saksha transforms raw crime records into actionable intelligence for the Karnataka State Police —
+          Drishyam transforms raw crime records into actionable intelligence for the Karnataka State Police —
           blending AI/ML predictive models, graph-based criminal network analysis, real-time alerts and a
           secure role-based command platform.
         </motion.p>
@@ -286,7 +286,7 @@ export const Landing: React.FC = () => {
               </h3>
               <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--lp-text-2)' }}>
                 From the moment an FIR is filed to predictive hotspot analysis and network forensics,
-                Saksha unifies the entire intelligence lifecycle under a single tactical interface.
+                Drishyam unifies the entire intelligence lifecycle under a single tactical interface.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-px bg-[color:var(--lp-border)]">
@@ -350,7 +350,7 @@ export const Landing: React.FC = () => {
                 boxShadow: '0 8px 30px rgba(47,127,224,0.25)',
               }}
             >
-              Sign In to Saksha <Lock className="h-4 w-4" />
+              Sign In to Drishyam <Lock className="h-4 w-4" />
             </a>
             <a
               href={navFor('/docs')}
@@ -371,7 +371,7 @@ export const Landing: React.FC = () => {
         >
           <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: 'var(--lp-red)' }} />
           <p className="text-xs leading-relaxed" style={{ color: 'var(--lp-text-2)' }}>
-            <span className="font-bold uppercase" style={{ color: 'var(--lp-red)' }}>Access controlled.</span> Saksha is restricted to authorised Karnataka State Police personnel.
+            <span className="font-bold uppercase" style={{ color: 'var(--lp-red)' }}>Access controlled.</span> Drishyam is restricted to authorised Karnataka State Police personnel.
             All session activity is recorded and audited under KSP Security Directive 7.2.
           </p>
         </div>
@@ -382,7 +382,7 @@ export const Landing: React.FC = () => {
         className="relative z-20 mt-auto shrink-0 border-t py-4 text-center font-mono text-[8px] uppercase tracking-[0.24em]"
         style={{ borderColor: 'var(--lp-border)', background: 'var(--lp-bg)', color: 'var(--lp-text-3)' }}
       >
-        SAKSHA v2.0 · Karnataka State Police · © 2026 · Datathon 2026 Challenge 2 — Crime Intelligence & Analytical Platform
+        DRISHYAM v2.0 · Karnataka State Police · © 2026 · Datathon 2026 Challenge 2 — Crime Intelligence & Analytical Platform
       </footer>
     </div>
   );

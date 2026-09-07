@@ -9,6 +9,7 @@ import PathFinderPanel from '../../components/network/PathFinderPanel';
 import ShortestPathPanel from '../../components/network/ShortestPathPanel';
 import GangNetworkView from '../../components/network/GangNetworkView';
 import LinkAnalysisPanel from '../../components/network/LinkAnalysisPanel';
+import HiddenNetworkPanel from '../../components/network/HiddenNetworkPanel';
 import NetworkTimelineSlider from '../../components/network/NetworkTimelineSlider';
 import AIGraphInsightsModal from '../../components/network/AIGraphInsightsModal';
 import { downloadSecureDossier } from '../../utils/downloader';
@@ -193,6 +194,14 @@ export const NetworkPageWorkspace: React.FC = () => {
     connectionError,
     runConnectionSearch,
     clearConnectionPath,
+    hiddenMinHops,
+    setHiddenMinHops,
+    hiddenMaxHops,
+    setHiddenMaxHops,
+    hiddenNetwork,
+    hiddenLoading,
+    hiddenError,
+    runHiddenNetworkDiscovery,
     linkAnalysis,
     insights,
     handleNeo4jSync,
@@ -202,6 +211,22 @@ export const NetworkPageWorkspace: React.FC = () => {
 
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
+
+  // Hidden-connection entities are partial records; resolve them to a full
+  // graph node (lookup first, safe fallback) so the 3D graph can highlight them.
+  const handleSelectHiddenEntity = (entity: { id: string; name: string } | null) => {
+    if (!entity) { setSelectedNode(null); return; }
+    const match = graphData?.nodes.find((n) => n.id === entity.id);
+    if (match) { setSelectedNode(match); return; }
+    setSelectedNode({
+      id: entity.id,
+      name: entity.name,
+      category: 'suspect' as never,
+      riskScore: 0,
+      details: 'Entity referenced by a hidden (multi-hop) network connection.',
+      casesCount: 0,
+    });
+  };
   const activeFilters = hasActiveNetworkFilters(networkFilters);
   const resultCount = graphData ? graphData.nodes.length : null;
   const hasExplicitDateFilters = Boolean(networkFilters.dateFrom || networkFilters.dateTo);
@@ -495,6 +520,44 @@ export const NetworkPageWorkspace: React.FC = () => {
             onSelectGang={setSelectedGang}
             onSelectMemberIn3D={setSelectedNode}
           />
+        )}
+
+        {activeView === 'hidden_networks' && (
+          <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+            <div className="lg:col-span-7 h-full min-h-[420px] lg:min-h-[64vh]">
+              <HiddenNetworkPanel
+                nodes={graphData?.nodes || []}
+                result={hiddenNetwork}
+                loading={hiddenLoading}
+                error={hiddenError}
+                minHops={hiddenMinHops}
+                maxHops={hiddenMaxHops}
+                onSetMinHops={setHiddenMinHops}
+                onSetMaxHops={setHiddenMaxHops}
+                onRun={() => void runHiddenNetworkDiscovery()}
+                onSelectNodeIn3D={handleSelectHiddenEntity}
+              />
+            </div>
+            <div className="lg:col-span-5 h-full min-h-[420px] lg:min-h-[64vh] bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
+              <WorkspaceSidePanel
+                selectedNode={selectedNode}
+                selectedLink={selectedLink}
+                nodes={graphData?.nodes || []}
+                links={graphData?.links || []}
+                emptyMessage="Select a hidden-connection entity to inspect its dossier"
+                onCloseNode={() => setSelectedNode(null)}
+                onCloseLink={() => setSelectedLink(null)}
+                onSelectNode={handleNodeSelect}
+                onSelectLink={handleLinkSelect}
+                onSetPathSource={handleSetPathSource}
+                onSetPathTarget={handleSetPathTarget}
+                onFocusNode={handleFocusNode}
+                onClearFocus={handleClearFocus}
+                isFocused={focusIsSelected}
+                focusHops={focusHops}
+              />
+            </div>
+          </div>
         )}
 
         {activeView === 'link_analysis' && <LinkAnalysisPanel data={linkAnalysis} loading={loading} />}

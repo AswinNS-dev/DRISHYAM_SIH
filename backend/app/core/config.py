@@ -19,7 +19,7 @@ VALID_DATA_MODES: tuple[str, ...] = ("production", "demo", "test")
 
 class Settings(BaseSettings):
     # --- App ---
-    APP_NAME: str = "SAKSHA Backend"
+    APP_NAME: str = "DRISHYAM Backend"
     APP_ENV: str = "development"
     API_V2_PREFIX: str = "/api/v2"
     # Debug defaults to OFF; must be explicitly enabled per environment.
@@ -177,7 +177,7 @@ class Settings(BaseSettings):
     ZOHO_PROJECT_ID: str | None = None
 
     # --- CORS ---
-    ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "https://drishyam-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=(ROOT_DIR / ".env", BACKEND_DIR / ".env"), env_file_encoding="utf-8", extra="ignore")
 

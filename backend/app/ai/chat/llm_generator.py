@@ -68,7 +68,7 @@ _NO_DATA_MARKERS = (
 )
 
 _REFUSAL_MESSAGE = (
-    "I could not find matching records in the Saksha database for that query. "
+    "I could not find matching records in the Drishyam database for that query. "
     "If you can tell me a little more — a case or FIR number, a name, or a "
     "district — I'll take another look."
 )
@@ -141,7 +141,7 @@ _NAME_NOISE = {
     "maximum", "minimum", "max", "min", "rank", "ranking", "peak", "large",
     "largest", "big", "biggest", "more", "fewer", "less", "few", "several",
     "many", "much", "number", "count", "total", "compare", "comparison",
-    "saksha", "crimecases", "northregion", "regarding", "called", "named",
+    "drishyam", "crimecases", "northregion", "regarding", "called", "named",
     "about", "involving", "against",
     # generic attributive adjectives/nouns — common in "…and key details?"
     # style prompts; must never be captured as a person's name
@@ -207,13 +207,13 @@ _DISTRIBUTION_PATTERNS = (
 )
 
 _GREETING_MESSAGE = (
-    "I'm SAKSHA AI, your crime intelligence assistant. "
+    "I'm DRISHYAM AI, your crime intelligence assistant. "
     "Ask me about cases, FIRs, criminals, suspects, officers, crime statistics, "
-    "hotspots or district forecasts — I will pull the answers directly from the Saksha database."
+    "hotspots or district forecasts — I will pull the answers directly from the Drishyam database."
 )
 
 _FOOTER_MESSAGE = (
-    "Source: Saksha Database. Verify details against official records before taking action."
+    "Source: Drishyam Database. Verify details against official records before taking action."
 )
 
 # Record identity extraction for cross-source de-duplication (vector retrieval
@@ -266,17 +266,17 @@ _PLATFORM_Q_RE = re.compile(
     r"\b(?:what\s+is|about|tell\s+me\s+about|describe|explain|purpose|goal|"
     r"who\s+(?:made|built|developed)|how\s+(?:does|do|did)|why\s+(?:is|was|are)|"
     r"architecture|tech\s+stack|features|capabilities|modules)\b"
-    r".*?\b(?:saksha|platform|system|application|project|tool|crime\s+intelligence)\b",
+    r".*?\b(?:drishyam|platform|system|application|project|tool|crime\s+intelligence)\b",
     re.I,
 )
 _PLATFORM_KNOWLEDGE_RE = re.compile(
-    r"SAKSHA PROJECT OVERVIEW.*?(?=RESPONSE FORMAT GUIDELINES|\Z)", re.S,
+    r"DRISHYAM PROJECT OVERVIEW.*?(?=RESPONSE FORMAT GUIDELINES|\Z)", re.S,
 )
 _PLATFORM_Q_LEAD = re.compile(
     r"^(?:what\s+is|about|tell\s+me\s+about|describe|explain|purpose|goal|overview)\b",
     re.I,
 )
-_PLATFORM_WORDS = {"saksha", "platform", "system", "application", "project", "crime intelligence"}
+_PLATFORM_WORDS = {"drishyam", "platform", "system", "application", "project", "crime intelligence"}
 
 
 def _is_platform_question(message: str) -> bool:
@@ -289,7 +289,7 @@ def _is_platform_question(message: str) -> bool:
 
 
 def _extract_platform_knowledge(system_prompt: str) -> str:
-    """Extracts the SAKSHA PROJECT OVERVIEW section from the system prompt."""
+    """Extracts the DRISHYAM PROJECT OVERVIEW section from the system prompt."""
     match = _PLATFORM_KNOWLEDGE_RE.search(system_prompt)
     if match:
         return match.group(0).strip()
@@ -519,7 +519,7 @@ class LLMGenerator:
         missing_person = self._named_person_not_in_context(message, sections)
         if missing_person:
             full_response = "\n".join([
-                f"I could not find any records for **{missing_person}** in the Saksha database.",
+                f"I could not find any records for **{missing_person}** in the Drishyam database.",
                 f"Double-check the spelling, or share a case/FIR number and I'll look again.\n\n{_FOOTER_MESSAGE}",
             ]).strip()
             for chunk in self._stream_text(full_response):
@@ -528,12 +528,12 @@ class LLMGenerator:
 
         if not sections:
             # No database records — try to answer from system prompt knowledge
-            # (project overview, general Saksha info).
+            # (project overview, general Drishyam info).
             if _is_platform_question(message):
                 platform_knowledge = _extract_platform_knowledge(system)
                 if platform_knowledge:
                     answer = (
-                        f"**SAKSHA — Crime Intelligence & Analytical Platform**\n\n"
+                        f"**DRISHYAM — Crime Intelligence & Analytical Platform**\n\n"
                         f"{platform_knowledge}\n\n"
                         f"{_FOOTER_MESSAGE}"
                     )
@@ -585,7 +585,7 @@ class LLMGenerator:
             }.get(focus_kind or "", "record")
             article = "an" if focus_kind == "officer" else "a"
             full_response = "\n".join([
-                f"I could not find {article} {noun} record matching **{explicit_id}** in the Saksha database.",
+                f"I could not find {article} {noun} record matching **{explicit_id}** in the Drishyam database.",
                 f"Double-check the number and I'll take another look.\n\n{_FOOTER_MESSAGE}",
             ]).strip()
             for chunk in self._stream_text(full_response):
@@ -601,11 +601,11 @@ class LLMGenerator:
             # naturally surfaces what the retrieved (vector/RAG) context DOES
             # cover, so the user can steer (issue #203).
             lead = {
-                "count": "I could not find a live count in the Saksha database that answers that.",
-                "field": "I could not find that detail in the Saksha database.",
-                "profile": "I could not find a matching record in the Saksha database.",
-                "rank": "I could not produce that ranking from the Saksha database.",
-                "generic": "I could not find anything in the Saksha database that directly answers that question.",
+                "count": "I could not find a live count in the Drishyam database that answers that.",
+                "field": "I could not find that detail in the Drishyam database.",
+                "profile": "I could not find a matching record in the Drishyam database.",
+                "rank": "I could not produce that ranking from the Drishyam database.",
+                "generic": "I could not find anything in the Drishyam database that directly answers that question.",
             }[intent]
             coverage = self._context_coverage(sections)
             if coverage:
@@ -695,7 +695,7 @@ class LLMGenerator:
                 }.get(focus_kind, "record")
                 article = "an" if focus_kind == "officer" else "a"
                 full_response = "\n".join([
-                    f"I could not find {article} {noun} record matching that in the Saksha database.",
+                    f"I could not find {article} {noun} record matching that in the Drishyam database.",
                     f"Double-check the name or number and I'll take another look.\n\n{_FOOTER_MESSAGE}",
                 ]).strip()
                 for chunk in self._stream_text(full_response):
@@ -732,9 +732,9 @@ class LLMGenerator:
         # for the help", "ok thanks") — even when extra connective words are
         # present, these are pure social replies, never data queries.
         if any(w in words for w in ("thanks", "thank", "thx", "ty", "gratitude")):
-            return "You're welcome! Anything else you'd like me to pull from the Saksha database — cases, FIRs, criminals, or crime trends?"
+            return "You're welcome! Anything else you'd like me to pull from the Drishyam database — cases, FIRs, criminals, or crime trends?"
         if any(w in words for w in ("bye", "goodbye", "goodnight")):
-            return "Stay safe — I'm here whenever you need another look at the Saksha data."
+            return "Stay safe — I'm here whenever you need another look at the Drishyam data."
 
         # Pure smalltalk (handles "hi", "hello", "ok", "good morning" etc.).
         core = [w for w in words if w not in _STOPWORDS]
@@ -746,16 +746,16 @@ class LLMGenerator:
         # Who / what are you
         if "who" in core and any(w in {"you", "are", "r"} for w in words):
             return (
-                "I'm **SAKSHA AI**, the intelligence assistant for the Karnataka State Police platform. "
+                "I'm **DRISHYAM AI**, the intelligence assistant for the Karnataka State Police platform. "
                 "I can look up cases, FIRs, criminals, victims, officers and live statistics straight from the "
-                "Saksha database, and I'll always cite the records I use. What would you like me to check?"
+                "Drishyam database, and I'll always cite the records I use. What would you like me to check?"
             )
         # What can you do / help
         if any(w in {"capabilities", "modules", "features"} for w in words) or cleaned in {
             "what can you do", "help", "what do you do", "how do you work", "what can you help with",
         }:
             return (
-                "I can help you with the crime intelligence in Saksha. A few things I do well:\n\n"
+                "I can help you with the crime intelligence in Drishyam. A few things I do well:\n\n"
                 "- **Cases & FIRs** — pull case numbers, status, priority, sections and linked suspects.\n"
                 "- **Criminals & offenders** — profile a person, their aliases, gang and linked cases.\n"
                 "- **Statistics** — district and category breakdowns, trends and hotspots.\n"
@@ -797,7 +797,7 @@ class LLMGenerator:
         lead = "I found" if LLMGenerator._line_score(subject, tokens) or matched else "There are"
         noun = subject if count != 1 else subject.rstrip("s")
         return (
-            f"{lead} **{count}** {noun} in the Saksha database matching your query."
+            f"{lead} **{count}** {noun} in the Drishyam database matching your query."
             + f"\n\n{_FOOTER_MESSAGE}"
         )
 
@@ -876,7 +876,7 @@ class LLMGenerator:
                         continue
                     noun = "case" if number == 1 else "cases"
                     return (
-                        f"**{raw_label}** has **{number}** {noun} on record in the Saksha database."
+                        f"**{raw_label}** has **{number}** {noun} on record in the Drishyam database."
                         + f"\n\n{_FOOTER_MESSAGE}"
                     )
         return None
@@ -1439,9 +1439,9 @@ class LLMGenerator:
     def _list_intro(message: str, count: int) -> list[str]:
         lower = message.lower()
         if _is_platform_question(message):
-            return ["Here's what I found about Saksha:", ""]
+            return ["Here's what I found about Drishyam:", ""]
         if any(w in lower for w in _TEMPORAL_WORDS):
-            return [f"Here's what the Saksha database shows for that period ({count} details):", ""]
+            return [f"Here's what the Drishyam database shows for that period ({count} details):", ""]
         if any(w in lower for w in ("criminal", "offender", "suspect", "gang")):
             return [f"Here are the criminal/offender records I found ({count}):", ""]
         if any(w in lower for w in ("fir", "first information")):
@@ -1452,7 +1452,7 @@ class LLMGenerator:
             return [f"Here are the officer records I found ({count}):", ""]
         if any(w in lower for w in ("statistic", "trend", "overview", "district", "category", "rate")):
             return [f"Here's the breakdown I found in the database ({count} entries):", ""]
-        return [f"Here's what I found in the Saksha database ({count} records):", ""]
+        return [f"Here's what I found in the Drishyam database ({count} records):", ""]
 
     @staticmethod
     def _stream_text(text: str) -> AsyncIterator[str]:

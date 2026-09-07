@@ -1,7 +1,8 @@
 -- ============================================================
--- SAKSHA DATABASE — Complete Schema + Seed Data
--- For import into a new Supabase PostgreSQL project
--- Run this in: Supabase Dashboard > SQL Editor
+-- LEGACY (pre-rename) setup script — superseded by
+-- database_schema.sql at the repository root, which carries the
+-- full DRISHYAM (SIH26189) schema + demo data. Kept only for
+-- historical reference; do not use for fresh installs.
 -- ============================================================
 BEGIN;
 

@@ -1,8 +1,8 @@
 """Issue 170: AI Chat Quality, Grounding, and Safety Evaluation Framework.
 
-This module provides a comprehensive evaluation framework for the Saksha AI
+This module provides a comprehensive evaluation framework for the Drishyam AI
 chat system. It verifies that the AI:
-- Uses real SAKSHA records
+- Uses real DRISHYAM records
 - Retrieves the correct evidence
 - Cites the records supporting its answer
 - Does not invent people, cases, relationships, evidence, or connections
@@ -992,7 +992,7 @@ class TestSafetyBoundaryChecks:
 
     def test_provenance_on_refusal(self):
         results = []
-        response = "I could not find matching records in the Saksha database for that query."
+        response = "I could not find matching records in the Drishyam database for that query."
         provenance = self.validator.get_provenance(response, results)
         assert provenance.refusal_issued is True
         assert provenance.has_fabricated_claims is True

@@ -1,6 +1,6 @@
-# Contributing to Saksha
+# Contributing to Drishyam
 
-First off, thank you for contributing to **Saksha – Crime Intelligence & Analytical Platform**.
+First off, thank you for contributing to **Drishyam – Crime Intelligence & Analytical Platform**.
 
 We appreciate every contribution that helps improve the platform. To keep development organized and maintain a stable codebase, please follow the guidelines below.
 
@@ -8,7 +8,7 @@ We appreciate every contribution that helps improve the platform. To keep develo
 
 # Project Overview
 
-Saksha is an AI-powered Crime Intelligence & Analytical Platform built for the Karnataka State Police.
+Drishyam is an AI-powered Crime Intelligence & Analytical Platform built for the Karnataka State Police.
 
 Technology Stack
 
@@ -363,7 +363,7 @@ Please be respectful, collaborative, and constructive in all interactions.
 
 # Thank You
 
-Thank you for contributing to Saksha.
+Thank you for contributing to Drishyam.
 
 Your contributions help build a modern AI-powered Crime Intelligence Platform for smarter policing and public safety.
 
