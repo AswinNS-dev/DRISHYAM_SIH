@@ -1,0 +1,55 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.oxlintcache/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases (SQLite, etc.)
+*.sqlite
+*.sqlite3
+*.db
+
+# Local evidence uploads (dev only — production uses Supabase Storage)
+backend/uploads/
+
+# Local task notes
+TODO.md
+
+# Logs
+*.log
+logs/
+backend/logs/

@@ -1,0 +1,514 @@
+"""Strategic Intelligence service — high-level intelligence briefing for command staff.
+
+Aggregates crime analytics, AI predictions, risk scores, emerging trends,
+and deployment recommendations into a unified strategic intelligence view.
+"""
+from __future__ import annotations
+
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.models.crime import CrimeCase
+from app.models.crime_category import CrimeCategory
+from app.models.criminal import Criminal
+from app.models.fir import FIR, FIRCriminalLink
+from app.models.location import Location
+from app.models.officer import Officer
+from app.models.victim import Victim
+from app.models.evidence import Evidence
+from app.models.notification import Notification
+
+
+def get_strategic_briefing(db: Session) -> dict[str, Any]:
+    """Generate a comprehensive strategic intelligence briefing."""
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    seven_days_ago = now - timedelta(days=7)
+
+    total_crimes = db.query(CrimeCase).count()
+    recent_crimes = db.query(CrimeCase).filter(CrimeCase.occurred_at >= thirty_days_ago).count()
+    weekly_crimes = db.query(CrimeCase).filter(CrimeCase.occurred_at >= seven_days_ago).count()
+    open_cases = db.query(CrimeCase).filter(CrimeCase.status == "open").count()
+    high_priority = db.query(CrimeCase).filter(CrimeCase.priority == "high").count()
+    total_firs = db.query(FIR).count()
+    total_criminals = db.query(Criminal).count()
+    at_large = db.query(Criminal).filter(Criminal.status == "at_large").count()
+    total_victims = db.query(Victim).count()
+    total_officers = db.query(Officer).count()
+    total_evidence = db.query(Evidence).count()
+
+    resolution_rate = 0
+    if total_crimes > 0:
+        closed = db.query(CrimeCase).filter(CrimeCase.status == "closed").count()
+        resolution_rate = round((closed / total_crimes) * 100, 1)
+
+    categories = (
+        db.query(CrimeCategory.name, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
+        .group_by(CrimeCategory.name)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    districts = (
+        db.query(Location.district, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .group_by(Location.district)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    monthly_trend = []
+    cases = db.query(CrimeCase.occurred_at).filter(CrimeCase.occurred_at.isnot(None)).order_by(CrimeCase.occurred_at).all()
+    month_buckets: Counter[str] = Counter()
+    for (occurred_at,) in cases:
+        if occurred_at:
+            month_buckets[occurred_at.strftime("%Y-%m")] += 1
+    for month_key in sorted(month_buckets.keys()):
+        monthly_trend.append({"month": month_key, "count": month_buckets[month_key]})
+
+    top_criminals = (
+        db.query(Criminal)
+        .join(FIRCriminalLink, FIRCriminalLink.criminal_id == Criminal.id)
+        .group_by(Criminal.id)
+        .order_by(func.count(FIRCriminalLink.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    recent_firs = db.query(FIR).order_by(FIR.filed_at.desc()).limit(5).all()
+
+    pending_evidence = db.query(Evidence).filter(Evidence.status.in_(["pending", "assigned"])).count()
+
+    unread_notifs = db.query(Notification).filter(Notification.is_read == False).count()
+
+    crime_change = 0
+    if recent_crimes > 0 and total_crimes > recent_crimes:
+        prev_period = total_crimes - recent_crimes
+        crime_change = round(((recent_crimes - prev_period) / max(prev_period, 1)) * 100, 1)
+
+    districts_at_risk = []
+    for district, count in districts:
+        ref = _get_district_risk_factors(db, district)
+        districts_at_risk.append({
+            "district": district,
+            "crime_count": count,
+            "risk_level": ref["risk_level"],
+            "trend": ref["trend"],
+            "factors": ref["factors"],
+        })
+    districts_at_risk.sort(key=lambda x: x["crime_count"], reverse=True)
+
+    top_categories = [{"category": name, "count": count} for name, count in categories[:5]]
+
+    emerging_trends = _detect_emerging_trends(db)
+
+    # Issue #143 gap 131.4: ground deployment advice in *when* incidents happen,
+    # not just where — peak time windows are computed from real occurred_at data.
+    temporal_windows = _district_temporal_windows(db)
+    for entry in districts_at_risk:
+        profile = temporal_windows.get(entry["district"])
+        if profile:
+            entry["peak_time_window"] = profile["peak_window_label"]
+            entry["night_share_pct"] = profile["night_share_pct"]
+            entry["weekend_share_pct"] = profile["weekend_share_pct"]
+
+    deployment_suggestions = _generate_deployment_suggestions(
+        districts_at_risk, top_categories, emerging_trends, temporal_windows=temporal_windows
+    )
+
+    return {
+        "generated_at": now.isoformat(),
+        "summary": {
+            "total_crimes": total_crimes,
+            "recent_crimes_30d": recent_crimes,
+            "weekly_crimes": weekly_crimes,
+            "open_cases": open_cases,
+            "high_priority_cases": high_priority,
+            "resolution_rate": resolution_rate,
+            "crime_trend_change": crime_change,
+            "total_firs": total_firs,
+            "total_criminals": total_criminals,
+            "at_large_criminals": at_large,
+            "total_victims": total_victims,
+            "total_officers": total_officers,
+            "total_evidence": total_evidence,
+            "pending_evidence": pending_evidence,
+            "unread_notifications": unread_notifs,
+        },
+        "top_categories": top_categories,
+        "districts_at_risk": districts_at_risk,
+        "monthly_trend": monthly_trend,
+        "emerging_trends": emerging_trends,
+        "deployment_suggestions": deployment_suggestions,
+        "top_criminals": [
+            {
+                "id": str(c.id),
+                "name": c.full_name,
+                "status": c.status,
+                "aliases": c.aliases,
+                "risk_factors": c.mo_summary[:200] if c.mo_summary else None,
+            }
+            for c in top_criminals
+        ],
+        "recent_firs": [
+            {
+                "id": str(f.id),
+                "fir_number": f.fir_number,
+                "complainant": f.complainant_name,
+                "status": f.status,
+                "filed_at": f.filed_at.isoformat() if f.filed_at else None,
+            }
+            for f in recent_firs
+        ],
+    }
+
+
+def get_high_risk_districts(db: Session) -> list[dict[str, Any]]:
+    """Return districts ranked by crime density and risk factors."""
+    rows = (
+        db.query(Location.district, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .group_by(Location.district)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    result = []
+    for district, count in rows:
+        ref = _get_district_risk_factors(db, district)
+        result.append({
+            "district": district,
+            "crime_count": count,
+            **ref,
+        })
+    return result
+
+
+def get_emerging_crime_types(db: Session) -> list[dict[str, Any]]:
+    """Detect emerging crime type trends."""
+    return _detect_emerging_trends(db)
+
+
+def get_resource_allocation(db: Session) -> dict[str, Any]:
+    """Generate resource allocation recommendations."""
+    districts = (
+        db.query(Location.district, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .group_by(Location.district)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    # Temporal overlay (issue #143 gap 131.4): patrol ratios are informed by
+    # when incidents actually cluster, not just aggregate volume.
+    temporal_windows = _district_temporal_windows(db)
+
+    total_crimes = sum(c for _, c in districts) or 1
+    allocations = []
+    for district, count in districts:
+        pct = round(count / total_crimes * 100, 1)
+        if pct > 20:
+            priority = "CRITICAL"
+        elif pct > 12:
+            priority = "HIGH"
+        elif pct > 6:
+            priority = "MEDIUM"
+        else:
+            priority = "LOW"
+        profile = temporal_windows.get(district, {})
+        allocations.append({
+            "district": district,
+            "crime_share_pct": pct,
+            "crime_count": count,
+            "allocation_priority": priority,
+            "suggested_patrol_ratio": round(pct / 10, 1),
+            "peak_time_window": profile.get("peak_window_label"),
+            "night_share_pct": profile.get("night_share_pct"),
+            "busiest_day": profile.get("busiest_day"),
+        })
+
+    return {
+        "allocations": allocations,
+        "total_districts": len(allocations),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def get_daily_intelligence_summary(db: Session) -> dict[str, Any]:
+    """Generate a daily intelligence summary for the command dashboard."""
+    today = datetime.now(timezone.utc).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    yesterday_start = today_start - timedelta(days=1)
+
+    today_crimes = db.query(CrimeCase).filter(CrimeCase.occurred_at >= today_start).count()
+    yesterday_crimes = db.query(CrimeCase).filter(
+        CrimeCase.occurred_at >= yesterday_start, CrimeCase.occurred_at < today_start
+    ).count()
+
+    today_firs = db.query(FIR).filter(FIR.filed_at >= today_start).count()
+    open_cases = db.query(CrimeCase).filter(CrimeCase.status == "open").count()
+    at_large = db.query(Criminal).filter(Criminal.status == "at_large").count()
+
+    categories_today = (
+        db.query(CrimeCategory.name, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
+        .filter(CrimeCase.occurred_at >= today_start)
+        .group_by(CrimeCategory.name)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    districts_today = (
+        db.query(Location.district, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .filter(CrimeCase.occurred_at >= today_start)
+        .group_by(Location.district)
+        .order_by(func.count(CrimeCase.id).desc())
+        .all()
+    )
+
+    trend = "increasing" if today_crimes > yesterday_crimes else "decreasing" if today_crimes < yesterday_crimes else "stable"
+
+    return {
+        "date": today.isoformat(),
+        "today_crimes": today_crimes,
+        "yesterday_crimes": yesterday_crimes,
+        "trend": trend,
+        "today_firs": today_firs,
+        "open_cases": open_cases,
+        "at_large_criminals": at_large,
+        "categories_today": [{"category": n, "count": c} for n, c in categories_today],
+        "districts_today": [{"district": d, "count": c} for d, c in districts_today],
+    }
+
+
+def _get_district_risk_factors(db: Session, district: str) -> dict[str, Any]:
+    """Compute risk factors for a specific district."""
+    open_count = (
+        db.query(CrimeCase)
+        .join(Location, CrimeCase.location_id == Location.id)
+        .filter(Location.district == district, CrimeCase.status == "open")
+        .count()
+    )
+    high_count = (
+        db.query(CrimeCase)
+        .join(Location, CrimeCase.location_id == Location.id)
+        .filter(Location.district == district, CrimeCase.priority == "high")
+        .count()
+    )
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    recent = (
+        db.query(CrimeCase)
+        .join(Location, CrimeCase.location_id == Location.id)
+        .filter(Location.district == district, CrimeCase.occurred_at >= thirty_days_ago)
+        .count()
+    )
+
+    factors = []
+    if open_count > 5:
+        factors.append("High open case backlog")
+    if high_count > 2:
+        factors.append("Multiple high-priority incidents")
+    if recent > 8:
+        factors.append("Elevated recent activity")
+
+    if open_count > 8 or high_count > 3:
+        risk = "CRITICAL"
+    elif open_count > 5 or high_count > 2:
+        risk = "HIGH"
+    elif open_count > 2:
+        risk = "MEDIUM"
+    else:
+        risk = "LOW"
+
+    trend = "increasing" if recent > 5 else "stable"
+
+    return {"risk_level": risk, "trend": trend, "factors": factors, "open_cases": open_count, "high_priority": high_count}
+
+
+def _detect_emerging_trends(db: Session) -> list[dict[str, Any]]:
+    """Detect emerging crime trends by comparing recent vs historical patterns."""
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago = now - timedelta(days=60)
+
+    recent_cats = (
+        db.query(CrimeCategory.name, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
+        .filter(CrimeCase.occurred_at >= thirty_days_ago)
+        .group_by(CrimeCategory.name)
+        .all()
+    )
+    historical_cats = (
+        db.query(CrimeCategory.name, func.count(CrimeCase.id))
+        .join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
+        .filter(CrimeCase.occurred_at >= sixty_days_ago, CrimeCase.occurred_at < thirty_days_ago)
+        .group_by(CrimeCategory.name)
+        .all()
+    )
+
+    recent_map = {name: count for name, count in recent_cats}
+    historical_map = {name: count for name, count in historical_cats}
+
+    trends = []
+    for name, recent_count in recent_map.items():
+        hist_count = historical_map.get(name, 0)
+        if hist_count > 0:
+            change_pct = round(((recent_count - hist_count) / hist_count) * 100, 1)
+        else:
+            change_pct = 100.0 if recent_count > 0 else 0.0
+
+        if change_pct > 20:
+            direction = "increasing"
+        elif change_pct < -20:
+            direction = "decreasing"
+        else:
+            direction = "stable"
+
+        trends.append({
+            "category": name,
+            "recent_count": recent_count,
+            "historical_count": hist_count,
+            "change_percentage": change_pct,
+            "direction": direction,
+        })
+
+    trends.sort(key=lambda x: abs(x["change_percentage"]), reverse=True)
+    return trends
+
+
+def _district_temporal_windows(db: Session) -> dict[str, dict[str, Any]]:
+    """Per-district temporal incident profile (issue #143 gap 131.4).
+
+    For every district with timestamped cases, identifies the dominant
+    four-hour-block window, night share (20:00-02:00), weekend share, and
+    busiest weekday — the raw material for time-aware patrol deployment.
+    """
+    rows = (
+        db.query(Location.district, CrimeCase.occurred_at)
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .filter(CrimeCase.occurred_at.isnot(None))
+        .all()
+    )
+
+    # Four 6-hour blocks; labels use 24h clock for briefing readability.
+    windows = [
+        ("00:00-06:00", range(0, 6)),
+        ("06:00-12:00", range(6, 12)),
+        ("12:00-18:00", range(12, 18)),
+        ("18:00-24:00", range(18, 24)),
+    ]
+    profiles: dict[str, dict[str, Any]] = {}
+    hour_totals: dict[str, list[int]] = {}
+    dow_totals: dict[str, list[int]] = {}
+
+    for district, occurred_at in rows:
+        district = district or "Unknown"
+        hour_totals.setdefault(district, [0] * 24)
+        dow_totals.setdefault(district, [0] * 7)
+        hour_totals[district][occurred_at.hour] += 1
+        dow_totals[district][occurred_at.weekday()] += 1
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    for district, hours in hour_totals.items():
+        dows = dow_totals[district]
+        total = sum(hours) or 1
+        block_counts = {label: sum(hours[h] for h in rng) for label, rng in windows}
+        peak_label = max(block_counts, key=block_counts.get) if total else None
+        night_count = sum(hours[h] for h in (20, 21, 22, 23, 0, 1))
+        busiest_day = max(range(7), key=lambda d: dows[d]) if total else None
+        profiles[district] = {
+            "total_incidents": sum(hours),
+            "peak_window_label": peak_label,
+            "peak_window_share_pct": round(block_counts.get(peak_label, 0) / total * 100, 1) if peak_label else 0.0,
+            "night_share_pct": round(night_count / total * 100, 1),
+            "weekend_share_pct": round((dows[5] + dows[6]) / total * 100, 1),
+            "busiest_day": days[busiest_day] if busiest_day is not None else None,
+        }
+    return profiles
+
+
+def _generate_deployment_suggestions(
+    districts_at_risk: list[dict],
+    top_categories: list[dict],
+    emerging_trends: list[dict],
+    temporal_windows: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Generate actionable deployment suggestions based on intelligence.
+
+    With ``temporal_windows`` supplied (issue #143 gap 131.4), adds
+    time-shifted patrol guidance derived from each district's observed
+    peak incident windows instead of volume-only recommendations.
+    """
+    temporal_windows = temporal_windows or {}
+    suggestions = []
+
+    critical_districts = [d for d in districts_at_risk if d["risk_level"] == "CRITICAL"]
+    for d in critical_districts[:3]:
+        suggestions.append({
+            "priority": "CRITICAL",
+            "action": f"Deploy additional patrol units to {d['district']}",
+            "reason": f"Crime count: {d['crime_count']}, Risk level: CRITICAL",
+            "district": d["district"],
+            "resource_type": "patrol",
+        })
+
+    increasing_trends = [t for t in emerging_trends if t["direction"] == "increasing"]
+    for t in increasing_trends[:2]:
+        suggestions.append({
+            "priority": "HIGH",
+            "action": f"Launch {t['category']} crackdown operation",
+            "reason": f"{t['category']} increased by {t['change_percentage']}% in last 30 days",
+            "district": "State-wide",
+            "resource_type": "special_operation",
+        })
+
+    # Temporal deployment guidance — highest-risk districts first.
+    ranked = sorted(
+        districts_at_risk,
+        key=lambda d: (-{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1}.get(d.get("risk_level"), 0), -d.get("crime_count", 0)),
+    )
+    for d in ranked:
+        profile = temporal_windows.get(d["district"])
+        if not profile or profile.get("night_share_pct") is None:
+            continue
+        if profile["night_share_pct"] >= 45:
+            suggestions.append({
+                "priority": "HIGH" if d.get("risk_level") in {"CRITICAL", "HIGH"} else "MEDIUM",
+                "action": f"Shift patrol coverage to the 20:00-02:00 window in {d['district']}",
+                "reason": (
+                    f"{profile['night_share_pct']}% of incidents occur between 20:00 and 02:00 "
+                    f"(peak block {profile.get('peak_window_label')})"
+                ),
+                "district": d["district"],
+                "resource_type": "night_patrol",
+            })
+        elif profile.get("weekend_share_pct", 0) >= 35:
+            suggestions.append({
+                "priority": "MEDIUM",
+                "action": f"Weekend surge patrols in {d['district']} ({profile['busiest_day']} emphasis)",
+                "reason": (
+                    f"{profile['weekend_share_pct']}% of incidents fall on weekends; "
+                    f"busiest day is {profile.get('busiest_day')}"
+                ),
+                "district": d["district"],
+                "resource_type": "weekend_patrol",
+            })
+        if len([s for s in suggestions if s["resource_type"] in {"night_patrol", "weekend_patrol"}]) >= 4:
+            break
+
+    if not suggestions:
+        suggestions.append({
+            "priority": "MEDIUM",
+            "action": "Maintain current deployment posture",
+            "reason": "No critical alerts detected. Continue routine patrols.",
+            "district": "State-wide",
+            "resource_type": "routine",
+        })
+
+    return suggestions

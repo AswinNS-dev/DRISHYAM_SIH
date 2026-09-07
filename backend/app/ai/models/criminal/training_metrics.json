@@ -1,0 +1,39 @@
+{
+  "trained_at": "2026-09-05T13:32:40.425359+00:00",
+  "training_rows": 60,
+  "n_criminals": 60,
+  "n_features": 14,
+  "feature_names": [
+    "fir_count",
+    "open_fir_count",
+    "distinct_districts",
+    "distinct_categories",
+    "high_severity_count",
+    "age_years",
+    "status_encoded",
+    "recency_days",
+    "avg_case_age_days",
+    "multi_district_flag",
+    "mo_tag_count",
+    "mo_night_flag",
+    "mo_weapon_flag",
+    "mo_vehicle_flag"
+  ],
+  "risk_scorer": {
+    "mean_risk_score": 56.502205831076,
+    "std_risk_score": 27.277548394876316,
+    "high_risk_fraction": 0.48333333333333334
+  },
+  "repeat_offender": {
+    "mean_probability": 0.9730105581727866
+  },
+  "similarity": {
+    "index_size": 60.0,
+    "mean_max_similarity": 0.989175933660941
+  },
+  "clustering": {
+    "inertia": 127867.9377,
+    "n_clusters": 4.0,
+    "mean_cluster_size": 15.0
+  }
+}
