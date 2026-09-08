@@ -65,6 +65,8 @@ def get_full_graph(
     crime_type: str | None = Query(None, max_length=500, description="Comma-separated crime types (OR)."),
     district: str | None = Query(None, max_length=500, description="Comma-separated districts (OR, case-insensitive)."),
     police_station: str | None = Query(None, max_length=500, description="Comma-separated police station jurisdictions (OR)."),
+    city: str | None = Query(None, max_length=255, description="Filter by city/station/town name (substring, case-insensitive)."),
+    scope: str | None = Query(None, description="Investigation scope: city | district | state | all"),
     fir_number: str | None = Query(None, max_length=500, description="Comma-separated FIR or case numbers (OR)."),
     victim_name: str | None = Query(None, max_length=255, description="Filter by victim name (substring, case-insensitive)."),
     state: str | None = Query(None, max_length=100, description="Filter by state name or state code (case-insensitive)."),
@@ -73,7 +75,7 @@ def get_full_graph(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
-    """Retrieve full criminal relationship network graph.
+    """Retrieve full criminal relationship network graph with geographic scoping.
 
     Multi-parameter filters (issue #226) are combined with AND semantics; values
     within a single comma-separated parameter are OR-ed. All filters are optional,
@@ -90,6 +92,8 @@ def get_full_graph(
         crime_type=crime_type,
         district=district,
         police_station=police_station,
+        city=city,
+        scope=scope,
         fir_number=fir_number,
         victim_name=victim_name,
         date_from=_parse_network_date(date_from),
@@ -120,24 +124,62 @@ def get_person_network(
 @router.get("/search")
 def search_network_entities(
     q: str = Query(..., min_length=1, max_length=200, description="Search term (name, FIR number, case number, station, district)"),
+    state: str | None = Query(None, description="Scope search by state"),
+    district: str | None = Query(None, description="Scope search by district"),
+    city: str | None = Query(None, description="Scope search by city/station"),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
-    """Search for criminals, victims, officers, FIRs, and cases by name/number/station/district."""
+    """Search for criminals, victims, officers, FIRs, and cases respecting active geographic scope."""
     from app.models.criminal import Criminal
     from app.models.victim import Victim
     from app.models.officer import Officer
-    from app.models.fir import FIR
+    from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
     from app.models.crime import CrimeCase
     from app.models.location import Location
 
-    pattern = f"%{q}%"
+    pattern = f"%{q.strip()}%" if isinstance(q, str) else f"%{q}%"
     results: list[dict[str, Any]] = []
 
-    criminals = db.query(Criminal).filter(
+    def _clean_param(val):
+        return val.strip() if isinstance(val, str) and val.strip() else None
+
+    clean_state = _clean_param(state)
+    clean_district = _clean_param(district)
+    clean_city = _clean_param(city)
+    clean_limit = limit if isinstance(limit, int) else 20
+    has_geo = bool(clean_state or clean_district or clean_city)
+
+    # Helper to apply geographic filters to queries with Location
+    def apply_geo_location_filter(loc_query):
+        if clean_state:
+            loc_query = loc_query.filter(Location.state.ilike(f"%{clean_state}%"))
+        if clean_district:
+            loc_query = loc_query.filter(Location.district.ilike(f"%{clean_district}%"))
+        if clean_city:
+            loc_query = loc_query.filter(
+                or_(
+                    Location.station.ilike(f"%{clean_city}%"),
+                    Location.address.ilike(f"%{clean_city}%"),
+                    Location.district.ilike(f"%{clean_city}%"),
+                )
+            )
+        return loc_query
+
+    # 1. Criminals
+    crim_q = db.query(Criminal).filter(
         or_(Criminal.full_name.ilike(pattern), Criminal.aliases.ilike(pattern))
-    ).limit(limit).all()
+    )
+    if has_geo:
+        crim_q = (
+            crim_q.join(FIRCriminalLink, Criminal.id == FIRCriminalLink.criminal_id)
+            .join(FIR, FIRCriminalLink.fir_id == FIR.id)
+            .join(CrimeCase, FIR.crime_case_id == CrimeCase.id)
+            .join(Location, CrimeCase.location_id == Location.id)
+        )
+        crim_q = apply_geo_location_filter(crim_q).distinct()
+    criminals = crim_q.limit(clean_limit).all()
     for c in criminals:
         results.append({
             "id": f"criminal-{c.id}",
@@ -148,7 +190,17 @@ def search_network_entities(
             "risk_score": min(100.0, 45.0 + len(c.fir_links) * 10),
         })
 
-    victims = db.query(Victim).filter(Victim.full_name.ilike(pattern)).limit(limit).all()
+    # 2. Victims
+    vic_q = db.query(Victim).filter(Victim.full_name.ilike(pattern))
+    if has_geo:
+        vic_q = (
+            vic_q.join(FIRVictimLink, Victim.id == FIRVictimLink.victim_id)
+            .join(FIR, FIRVictimLink.fir_id == FIR.id)
+            .join(CrimeCase, FIR.crime_case_id == CrimeCase.id)
+            .join(Location, CrimeCase.location_id == Location.id)
+        )
+        vic_q = apply_geo_location_filter(vic_q).distinct()
+    victims = vic_q.limit(clean_limit).all()
     for v in victims:
         results.append({
             "id": f"victim-{v.id}",
@@ -158,9 +210,15 @@ def search_network_entities(
             "status": "victim",
         })
 
-    officers = db.query(Officer).filter(
+    # 3. Officers
+    off_q = db.query(Officer).filter(
         or_(Officer.name.ilike(pattern), Officer.badge_number.ilike(pattern))
-    ).limit(limit).all()
+    )
+    if clean_district:
+        off_q = off_q.filter(Officer.district.ilike(f"%{clean_district}%"))
+    if clean_city:
+        off_q = off_q.filter(Officer.station.ilike(f"%{clean_city}%"))
+    officers = off_q.limit(clean_limit).all()
     for o in officers:
         results.append({
             "id": f"officer-{o.id}",
@@ -170,9 +228,14 @@ def search_network_entities(
             "status": o.status,
         })
 
-    firs = db.query(FIR).filter(
+    # 4. FIRs
+    fir_q = db.query(FIR).filter(
         or_(FIR.fir_number.ilike(pattern), FIR.complainant_name.ilike(pattern))
-    ).limit(limit).all()
+    )
+    if has_geo:
+        fir_q = fir_q.join(CrimeCase, FIR.crime_case_id == CrimeCase.id).join(Location, CrimeCase.location_id == Location.id)
+        fir_q = apply_geo_location_filter(fir_q).distinct()
+    firs = fir_q.limit(clean_limit).all()
     for f in firs:
         results.append({
             "id": f"case-{f.id}",
@@ -182,9 +245,14 @@ def search_network_entities(
             "status": "filed",
         })
 
-    cases = db.query(CrimeCase).filter(
+    # 5. Cases
+    case_q = db.query(CrimeCase).filter(
         or_(CrimeCase.case_number.ilike(pattern), CrimeCase.description.ilike(pattern))
-    ).limit(limit).all()
+    )
+    if has_geo:
+        case_q = case_q.join(Location, CrimeCase.location_id == Location.id)
+        case_q = apply_geo_location_filter(case_q).distinct()
+    cases = case_q.limit(clean_limit).all()
     for c in cases:
         results.append({
             "id": f"case-{c.id}",
@@ -194,20 +262,23 @@ def search_network_entities(
             "status": c.status,
         })
 
-    locations = db.query(Location).filter(
-        or_(Location.station.ilike(pattern), Location.district.ilike(pattern))
-    ).limit(limit).all()
+    # 6. Locations
+    loc_q = db.query(Location).filter(
+        or_(Location.station.ilike(pattern), Location.district.ilike(pattern), Location.address.ilike(pattern))
+    )
+    loc_q = apply_geo_location_filter(loc_q)
+    locations = loc_q.limit(clean_limit).all()
     for loc in locations:
         results.append({
             "id": f"location-{loc.id}",
             "type": "location",
-            "name": f"{loc.station}, {loc.district}",
+            "name": f"{loc.station or 'Station'}, {loc.district}",
             "detail": f"District: {loc.district} | Lat: {loc.latitude}, Lon: {loc.longitude}",
             "status": "active",
         })
 
     results.sort(key=lambda x: 0 if q.lower() in x["name"].lower() else 1)
-    return {"results": results[:limit], "query": q, "total": len(results[:limit])}
+    return {"results": results[:clean_limit], "query": q, "total": len(results[:clean_limit])}
 
 
 @router.get("/case/{case_id}", response_model=NetworkGraphResponse)
@@ -327,10 +398,12 @@ def get_hidden_networks(
     min_hops: int = Query(2, ge=2, le=5),
     max_hops: int = Query(3, ge=2, le=5),
     limit: int = Query(50, ge=1, le=100),
-    criminal_name: str | None = Query(None),
+    criminal_name: str | None = Query(None, description="Search hidden patterns anchored on a specific criminal name"),
     crime_type: str | None = Query(None),
     district: str | None = Query(None),
     police_station: str | None = Query(None),
+    city: str | None = Query(None),
+    state: str | None = Query(None),
     fir_number: str | None = Query(None),
     victim_name: str | None = Query(None),
     date_from: str | None = Query(None),
@@ -353,6 +426,8 @@ def get_hidden_networks(
         crime_type=crime_type,
         district=district,
         police_station=police_station,
+        city=city,
+        state=state,
         fir_number=fir_number,
         victim_name=victim_name,
         date_from=_parse_network_date(date_from),

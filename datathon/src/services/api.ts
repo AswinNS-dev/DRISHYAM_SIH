@@ -501,6 +501,8 @@ export async function getHiddenNetworks(
     if (filters.policeStations?.length) params.police_station = filters.policeStations.join(',');
     if (filters.firNumbers?.length) params.fir_number = filters.firNumbers.join(',');
     if (filters.victimName) params.victim_name = filters.victimName;
+    if (filters.state) params.state = filters.state;
+    if (filters.city) params.city = filters.city;
     if (filters.dateFrom) params.date_from = filters.dateFrom;
     if (filters.dateTo) params.date_to = filters.dateTo;
   }
@@ -1185,9 +1187,21 @@ export interface NetworkSearchResult {
   risk_score?: number;
 }
 
-export async function searchNetworkEntities(query: string, limit = 20) {
+export async function searchNetworkEntities(
+  query: string,
+  limit = 20,
+  geo?: { state?: string; district?: string; city?: string },
+  options?: { signal?: AbortSignal }
+) {
   return apiRequest<{ results: NetworkSearchResult[]; query: string; total: number }>(
-    `/network/search${buildQueryString({ q: query, limit })}`
+    `/network/search${buildQueryString({
+      q: query,
+      limit,
+      state: geo?.state,
+      district: geo?.district,
+      city: geo?.city,
+    })}`,
+    options?.signal ? { signal: options.signal } : undefined
   );
 }
 
@@ -1206,10 +1220,14 @@ export async function getNetworkCase(
 
 export interface NetworkFilterParams {
   state?: string;
+  district?: string;
+  districts?: string[];
+  city?: string;
+  policeStations?: string[];
+  scope?: 'city' | 'district' | 'state' | 'all';
+  limit?: number;
   criminalName?: string;
   crimeTypes?: string[];
-  districts?: string[];
-  policeStations?: string[];
   firNumbers?: string[];
   victimName?: string;
   dateFrom?: string;
@@ -1221,8 +1239,10 @@ export async function getFullNetworkGraph(
   minRisk?: number,
   provenanceFilter?: string,
   excludeDemo?: boolean,
-  filters?: NetworkFilterParams
+  filters?: NetworkFilterParams,
+  options?: { signal?: AbortSignal }
 ) {
+  const districtParam = filters?.district || (filters?.districts?.length ? filters.districts.join(',') : undefined);
   return apiRequest<NetworkGraphResponse>(
     `/network/graph${buildQueryString({
       category_filter: categoryFilter,
@@ -1230,15 +1250,19 @@ export async function getFullNetworkGraph(
       provenance_filter: provenanceFilter,
       exclude_demo: excludeDemo,
       state: filters?.state,
+      district: districtParam,
+      city: filters?.city,
+      scope: filters?.scope,
+      limit: filters?.limit,
+      police_station: filters?.policeStations?.length ? filters.policeStations.join(',') : undefined,
       criminal_name: filters?.criminalName,
       crime_type: filters?.crimeTypes?.length ? filters.crimeTypes.join(',') : undefined,
-      district: filters?.districts?.length ? filters.districts.join(',') : undefined,
-      police_station: filters?.policeStations?.length ? filters.policeStations.join(',') : undefined,
       fir_number: filters?.firNumbers?.length ? filters.firNumbers.join(',') : undefined,
       victim_name: filters?.victimName,
       date_from: filters?.dateFrom,
       date_to: filters?.dateTo,
-    })}`
+    })}`,
+    options?.signal ? { signal: options.signal } : undefined
   );
 }
 

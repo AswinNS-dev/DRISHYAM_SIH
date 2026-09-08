@@ -130,8 +130,9 @@ def _filter_fir_ids(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     state: str | None = None,
+    city: str | None = None,
 ) -> set[Any]:
-    """Return the set of FIR ids matching the supplied case filters (issue #226).
+    """Return the set of FIR ids matching the supplied case filters (issue #226 + Geography).
 
     Semantics are deterministic and documented in the API contract:
       * AND across different parameters — every supplied filter must match.
@@ -139,6 +140,7 @@ def _filter_fir_ids(
         (``crime_type=Theft,Robbery`` matches theft OR robbery incidents).
       * Substring (case-insensitive) matching for free-text parameters such as
         criminal/victim names and FIR/case numbers so partial user input works.
+      * Geographic hierarchy: state, district, city (station/locality).
 
     All matching happens database-side through parameterized SQLAlchemy
     expressions; no raw SQL is interpolated.
@@ -159,7 +161,7 @@ def _filter_fir_ids(
         query = query.join(Victim, FIRVictimLink.victim_id == Victim.id)
         query = query.filter(Victim.full_name.ilike(pattern))
 
-    if state or crime_type or district or police_station or fir_number:
+    if state or crime_type or district or police_station or city or fir_number:
         query = query.join(CrimeCase, FIR.crime_case_id == CrimeCase.id)
 
     if state:
@@ -203,6 +205,19 @@ def _filter_fir_ids(
                 or_(*[Location.station.ilike(f"%{v}%") for v in values])
             )
 
+    if city:
+        values = _parse_multi_values(city)
+        if values:
+            if not state and not district and not police_station:
+                query = query.join(Location, CrimeCase.location_id == Location.id)
+            city_conds: list[Any] = []
+            for v in values:
+                p = f"%{v}%"
+                city_conds.append(Location.station.ilike(p))
+                city_conds.append(Location.address.ilike(p))
+                city_conds.append(Location.district.ilike(p))
+            query = query.filter(or_(*city_conds))
+
     if fir_number:
         values = _parse_multi_values(fir_number)
         if values:
@@ -231,14 +246,16 @@ def _has_case_filters(
     date_from: datetime | None,
     date_to: datetime | None,
     state: str | None = None,
+    city: str | None = None,
 ) -> bool:
-    """True when any multi-parameter case filter is active."""
+    """True when any multi-parameter case filter or geographic scope is active."""
     return any((
         state,
-        criminal_name,
-        crime_type,
         district,
         police_station,
+        city,
+        criminal_name,
+        crime_type,
         fir_number,
         victim_name,
         date_from is not None,
@@ -259,11 +276,13 @@ def _build_sql_graph(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     state: str | None = None,
+    city: str | None = None,
+    scope: str | None = None,
 ) -> tuple[list[NetworkNode], list[NetworkEdge]]:
     """Construct complete graph from PostgreSQL database relations with full provenance tracking.
 
-    Issue #226: when any multi-parameter case filter is supplied the matching FIRs
-    are resolved database-side *first*, and every node/edge is then derived only
+    Issue #226 + Geography: when any multi-parameter case filter or geographic scope is supplied,
+    the matching FIRs are resolved database-side *first*, and every node/edge is then derived only
     from those FIRs. Unrelated cases/relationships are never loaded into the graph.
     """
     _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
@@ -279,6 +298,7 @@ def _build_sql_graph(
         date_from,
         date_to,
         state=state,
+        city=city,
     ):
         filtered_fir_ids = _filter_fir_ids(
             db,
@@ -291,6 +311,7 @@ def _build_sql_graph(
             date_from=date_from,
             date_to=date_to,
             state=state,
+            city=city,
         )
 
     query = (
@@ -823,6 +844,19 @@ def _build_sql_graph(
         .all()
     )
     for notif in surveillance_notifications:
+        matching_case_nodes = []
+        if notif.related_case_number or notif.related_fir_number:
+            for n in nodes_map.values():
+                if n.category == NetworkNodeCategory.CASE:
+                    if (notif.related_case_number and notif.related_case_number in n.name) or \
+                       (notif.related_fir_number and notif.related_fir_number in n.name) or \
+                       (n.details and notif.related_case_number and notif.related_case_number in n.details):
+                        matching_case_nodes.append(n.id)
+
+        # When geographic or case filters are active, do not include floating/unrelated surveillance reports
+        if filtered_fir_ids is not None and not matching_case_nodes:
+            continue
+
         surv_node_id = f"surveillance-{notif.id}"
         sr_label = notif.related_fir_number or notif.related_case_number or f"SR-{str(notif.id)[:6].upper()}"
         if surv_node_id not in nodes_map:
@@ -845,30 +879,24 @@ def _build_sql_graph(
                 },
             )
 
-        # Link surveillance report to relevant case in graph if present
-        if notif.related_case_number:
-            matching_case_nodes = [
-                n.id for n in nodes_map.values()
-                if n.category == NetworkNodeCategory.CASE and notif.related_case_number in n.name or (n.details and notif.related_case_number in n.details)
-            ]
-            for c_nid in matching_case_nodes:
-                edges_list.append(NetworkEdge(
-                    source=surv_node_id,
-                    target=c_nid,
-                    relationship="Observed in Surveillance",
-                    relationship_type="SURVEILLANCE",
-                    provenance="DIRECT_DATABASE",
-                    verification_status="VERIFIED",
-                    confidence=0.95,
-                    confidence_level="HIGH",
-                    evidence=[{
-                        "record_type": "surveillance_log",
-                        "record_id": str(notif.id),
-                        "details": notif.message,
-                        "timestamp": notif.created_at.isoformat() if notif.created_at else None,
-                    }],
-                    is_demo_derived=True,
-                ))
+        for c_nid in matching_case_nodes:
+            edges_list.append(NetworkEdge(
+                source=surv_node_id,
+                target=c_nid,
+                relationship="Observed in Surveillance",
+                relationship_type="SURVEILLANCE",
+                provenance="DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=0.95,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "surveillance_log",
+                    "record_id": str(notif.id),
+                    "details": notif.message,
+                    "timestamp": notif.created_at.isoformat() if notif.created_at else None,
+                }],
+                is_demo_derived=True,
+            ))
 
     # Surveillance Interventions (ANPR / Smart CCTV Rollout)
     surveillance_interventions = (
@@ -884,6 +912,15 @@ def _build_sql_graph(
         .all()
     )
     for itv in surveillance_interventions:
+        matching_loc_nodes = []
+        if itv.district:
+            for l_nid, l_node in list(nodes_map.items()):
+                if l_node.category == NetworkNodeCategory.LOCATION and l_node.district and itv.district.lower() in l_node.district.lower():
+                    matching_loc_nodes.append(l_nid)
+
+        if filtered_fir_ids is not None and not matching_loc_nodes:
+            continue
+
         itv_node_id = f"surveillance-itv-{itv.id}"
         if itv_node_id not in nodes_map:
             nodes_map[itv_node_id] = NetworkNode(
@@ -903,26 +940,24 @@ def _build_sql_graph(
                     "district": itv.district,
                 },
             )
-        # Link to district location node if in graph
-        if itv.district:
-            for l_nid, l_node in list(nodes_map.items()):
-                if l_node.category == NetworkNodeCategory.LOCATION and l_node.district and itv.district.lower() in l_node.district.lower():
-                    edges_list.append(NetworkEdge(
-                        source=itv_node_id,
-                        target=l_nid,
-                        relationship="Jurisdiction Surveillance Grid",
-                        relationship_type="SURVEILLANCE",
-                        provenance="DIRECT_DATABASE",
-                        verification_status="VERIFIED",
-                        confidence=0.90,
-                        confidence_level="HIGH",
-                        evidence=[{
-                            "record_type": "cctv_deployment",
-                            "record_id": str(itv.id),
-                            "details": itv.description,
-                        }],
-                        is_demo_derived=True,
-                    ))
+
+        for l_nid in matching_loc_nodes:
+            edges_list.append(NetworkEdge(
+                source=itv_node_id,
+                target=l_nid,
+                relationship="Jurisdiction Surveillance Grid",
+                relationship_type="SURVEILLANCE",
+                provenance="DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=0.90,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "cctv_deployment",
+                    "record_id": str(itv.id),
+                    "details": itv.description,
+                }],
+                is_demo_derived=True,
+            ))
 
     # 4. SOCIAL MEDIA INTELLIGENCE
     # Derives from crime cases and FIRs with social media threats, stalking, or cyber fraud MO
@@ -1229,13 +1264,13 @@ def get_full_network_graph(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     state: str | None = None,
+    city: str | None = None,
+    scope: str | None = None,
 ) -> NetworkGraphResponse:
     """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback).
 
-    Issue #226: multi-parameter case filters are always resolved against the
-    PostgreSQL source of truth, so when any of them is active the Neo4j fast path
-    is bypassed (Neo4j stores only a coarse graph projection and cannot honour
-    crime-type/district/date predicates). Unfiltered queries keep the existing
+    Issue #226 + Geography: multi-parameter case filters and geographic scope (state/district/city)
+    are always resolved against the source of truth database. Unfiltered queries keep the existing
     Neo4j-first behaviour.
     """
     has_case_filters = _has_case_filters(
@@ -1248,6 +1283,7 @@ def get_full_network_graph(
         date_from,
         date_to,
         state=state,
+        city=city,
     )
     neo4j_data = None
     if is_neo4j_available() and not has_case_filters:
@@ -1270,6 +1306,15 @@ def get_full_network_graph(
             exclude_demo=exclude_demo,
         )
 
+    # Adaptive sensible limits based on geographic scope
+    effective_limit = limit
+    if scope == "city":
+        effective_limit = min(limit, 350)
+    elif scope == "district":
+        effective_limit = min(limit, 750)
+    elif scope == "state":
+        effective_limit = min(limit, 1500)
+
     nodes, edges = _build_sql_graph(
         db,
         category_filter=category_filter,
@@ -1283,8 +1328,10 @@ def get_full_network_graph(
         date_from=date_from,
         date_to=date_to,
         state=state,
+        city=city,
+        scope=scope,
     )
-    limited_nodes = nodes[:limit]
+    limited_nodes = nodes[:effective_limit]
     limited_ids = {n.id for n in limited_nodes}
     limited_edges = [e for e in edges if e.source in limited_ids and e.target in limited_ids]
     return _graph_response(
@@ -2110,13 +2157,17 @@ def discover_hidden_networks(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    state: str | None = None,
+    city: str | None = None,
     limit: int = 50,
 ) -> HiddenNetworkResponse:
     """Friends-of-friends hidden network discovery over shared-FIR participation.
 
     Surfaces entity pairs that have NO direct relationship record but ARE
-    connected through one or more intermediaries (A → B → C, or deeper). Every
-    result carries the full evidence chain (the intermediate entities plus the
+    connected through one or more intermediaries (A → B → C, or deeper). When
+    a criminal_name is provided, traversal is anchored specifically to that criminal,
+    surfacing indirect multi-hop connections between that criminal and other entities.
+    Every result carries the full evidence chain (the intermediate entities plus the
     FIR records supporting each hop) and is explicitly labelled as an
     *indirect / potential* network connection — never as a confirmed
     criminal association.
@@ -2125,9 +2176,13 @@ def discover_hidden_networks(
     max_hops = max(min_hops, min(int(max_hops), 5))
     limit = max(1, min(int(limit), 100))
 
+    # Note: When discovering multi-hop hidden networks for a specific criminal,
+    # do NOT filter the FIR query by criminal_name; doing so would exclude the
+    # second and third hop FIRs! Instead, filter by geography/case criteria,
+    # build the graph, and anchor BFS on the target criminal.
     filtered_fir_ids = _filter_fir_ids(
         db,
-        criminal_name=criminal_name,
+        criminal_name=None,
         crime_type=crime_type,
         district=district,
         police_station=police_station,
@@ -2135,6 +2190,8 @@ def discover_hidden_networks(
         victim_name=victim_name,
         date_from=date_from,
         date_to=date_to,
+        state=state,
+        city=city,
     )
     if not filtered_fir_ids:
         return HiddenNetworkResponse(found=0, connections=[], explanation="No network relationships found for the selected filters.")
@@ -2228,10 +2285,36 @@ def discover_hidden_networks(
     for node_id in adjacency:
         adjacency[node_id].sort(key=lambda nid: people[nid]["name"].lower())
 
-    # Cap the traversal to the largest connected component slice so the BFS
-    # all-pairs sweep stays bounded on large graphs.
-    candidate_ids = sorted(adjacency.keys(), key=lambda nid: -len(adjacency[nid]))[:300]
-    candidate_set = set(candidate_ids)
+    clean_target_name = criminal_name.strip() if criminal_name and criminal_name.strip() else None
+
+    if clean_target_name:
+        needle = clean_target_name.lower()
+        # Find all matching criminals/suspects
+        matching_node_ids = [
+            nid for nid in adjacency
+            if nid in people and needle in people[nid]["name"].lower() and people[nid]["category"] in (NetworkNodeCategory.SUSPECT, NetworkNodeCategory.OFFENDER)
+        ]
+        if not matching_node_ids:
+            # Fallback to any entity matching name
+            matching_node_ids = [
+                nid for nid in adjacency
+                if nid in people and needle in people[nid]["name"].lower()
+            ]
+
+        if not matching_node_ids:
+            return HiddenNetworkResponse(
+                found=0,
+                connections=[],
+                explanation=f"No individual matching '{clean_target_name}' was found with active network relationships in the current scope. Verify spelling or expand geographic scope.",
+            )
+
+        candidate_ids = matching_node_ids
+        candidate_set = set(adjacency.keys())
+    else:
+        # Cap the traversal to the largest connected component slice so the BFS
+        # all-pairs sweep stays bounded on large graphs.
+        candidate_ids = sorted(adjacency.keys(), key=lambda nid: -len(adjacency[nid]))[:300]
+        candidate_set = set(candidate_ids)
 
     direct_pairs: set[frozenset[str]] = {frozenset(pair) for pair in edge_evidence}
     seen_targets: dict[str, set[str]] = defaultdict(set)
@@ -2333,18 +2416,37 @@ def discover_hidden_networks(
         if len(results) >= limit * 2:
             break
 
-    results.sort(key=lambda c: (-c.strength, c.hops))
+    # Prioritize connections between suspects / offenders
+    def _rank_connection(c: HiddenConnection) -> tuple[int, float, int]:
+        s_cat = getattr(c.source, "category", "")
+        t_cat = getattr(c.target, "category", "")
+        both_criminals = 1 if (s_cat in ("suspect", "offender") and t_cat in ("suspect", "offender")) else 0
+        return (-both_criminals, -c.strength, c.hops)
+
+    results.sort(key=_rank_connection)
     results = results[:limit]
-    return HiddenNetworkResponse(
-        found=len(results),
-        connections=results,
-        explanation=(
+
+    if clean_target_name:
+        matched_str = ", ".join(people[nid]["name"] for nid in candidate_ids[:3])
+        explanation = (
+            f"{len(results)} indirect hidden pattern(s) identified for '{matched_str}' "
+            f"across {min_hops}-{max_hops} hops. Each path shows the intermediary brokers and supporting FIR records."
+            if results
+            else f"No indirect multi-hop connections found for '{clean_target_name}' within {min_hops}-{max_hops} hops in the active network slice."
+        )
+    else:
+        explanation = (
             f"{len(results)} indirect (hidden) connection(s) found within {min_hops}-{max_hops} "
             "hops of the current filtered network. Each connection is labelled as a potential "
             "network link with its full evidence chain — none are confirmed associations."
             if results
             else "No hidden multi-hop connections found in the current filtered network."
-        ),
+        )
+
+    return HiddenNetworkResponse(
+        found=len(results),
+        connections=results,
+        explanation=explanation,
     )
 
 

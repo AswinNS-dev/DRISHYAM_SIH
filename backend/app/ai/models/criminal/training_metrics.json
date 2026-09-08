@@ -1,7 +1,7 @@
 {
-  "trained_at": "2026-09-07T18:28:54.233410+00:00",
-  "training_rows": 67,
-  "n_criminals": 67,
+  "trained_at": "2026-09-08T06:01:30.183309+00:00",
+  "training_rows": 113,
+  "n_criminals": 113,
   "n_features": 14,
   "feature_names": [
     "fir_count",
@@ -20,20 +20,20 @@
     "mo_vehicle_flag"
   ],
   "risk_scorer": {
-    "mean_risk_score": 42.06354810747642,
-    "std_risk_score": 27.32917206234842,
-    "high_risk_fraction": 0.23880597014925373
+    "mean_risk_score": 25.997510899810155,
+    "std_risk_score": 29.21672906733309,
+    "high_risk_fraction": 0.1415929203539823
   },
   "repeat_offender": {
-    "mean_probability": 0.9600254384946396
+    "mean_probability": 0.9090907512095293
   },
   "similarity": {
-    "index_size": 67.0,
-    "mean_max_similarity": 0.9867323073000724
+    "index_size": 113.0,
+    "mean_max_similarity": 0.9987954283099293
   },
   "clustering": {
-    "inertia": 306084.2201,
+    "inertia": 490558.1022,
     "n_clusters": 4.0,
-    "mean_cluster_size": 16.75
+    "mean_cluster_size": 28.25
   }
 }

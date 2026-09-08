@@ -12,6 +12,7 @@ import LinkAnalysisPanel from '../../components/network/LinkAnalysisPanel';
 import HiddenNetworkPanel from '../../components/network/HiddenNetworkPanel';
 import NetworkTimelineSlider from '../../components/network/NetworkTimelineSlider';
 import AIGraphInsightsModal from '../../components/network/AIGraphInsightsModal';
+import GeographicScopeBar from '../../components/network/GeographicScopeBar';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
@@ -206,6 +207,12 @@ export const NetworkPageWorkspace: React.FC = () => {
     gangs,
     selectedGang,
     setSelectedGang,
+    sourceNodeId,
+    setSourceNodeId,
+    targetNodeId,
+    setTargetNodeId,
+    hiddenTargetCriminal,
+    setHiddenTargetCriminal,
     pathResult,
     pathLoading,
     runShortestPath,
@@ -233,6 +240,19 @@ export const NetworkPageWorkspace: React.FC = () => {
     handleNeo4jSync,
     timelineDateRange,
     setTimelineDateRange,
+    selectedState,
+    setSelectedState,
+    selectedDistrict,
+    setSelectedDistrict,
+    selectedCity,
+    setSelectedCity,
+    investigationScope,
+    setInvestigationScope,
+    expandScope,
+    searchQuery,
+    setSearchQuery,
+    searchGlobal,
+    toggleSearchGlobal,
   } = useNetwork();
 
   const { user } = useAuthStore();
@@ -302,10 +322,27 @@ export const NetworkPageWorkspace: React.FC = () => {
   }, [networkFilters, timelineDateRange]);
 
   // Issue #230: connection-path highlight normalized to undirected edge keys.
-  const highlightPath = useMemo(() => {
+  const connectionHighlightPath = useMemo(() => {
     if (!highlightOn) return null;
     return buildNetworkPathHighlight(connectionPath);
   }, [highlightOn, connectionPath]);
+
+  // Shortest path highlight normalized to node IDs and link keys
+  const shortestHighlightPath = useMemo(() => {
+    if (!pathResult || !pathResult.found || !pathResult.path_nodes || pathResult.path_nodes.length < 2) return null;
+    const nodeIds = pathResult.path_nodes.map((n) => n.id);
+    const linkKeys: string[] = [];
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const a = nodeIds[i];
+      const b = nodeIds[i + 1];
+      linkKeys.push(`${a}__${b}`);
+      linkKeys.push(`${b}__${a}`);
+    }
+    return { nodeIds, linkKeys };
+  }, [pathResult]);
+
+  const activeHighlightPath = activeView === 'shortest_path' ? shortestHighlightPath : connectionHighlightPath;
+  const highlightPath = activeHighlightPath;
 
   // Multi-source intelligence visibility toggles
   const [sourceVisibility, setSourceVisibility] = useState<Record<string, boolean>>({
@@ -456,7 +493,16 @@ export const NetworkPageWorkspace: React.FC = () => {
     // 1. Suspect <-> Offender Nexus Mode: Isolate suspect & offender connections alone
     if (isNexusActive) {
       const isSuspectOrOffender = (cat: string) => cat === 'suspect' || cat === 'offender';
-      const candidateNodes = base.nodes.filter((n) => isSuspectOrOffender(n.category));
+      let candidateNodes = base.nodes.filter((n) => isSuspectOrOffender(n.category));
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        candidateNodes = candidateNodes.filter(
+          (n) =>
+            n.name?.toLowerCase().includes(q) ||
+            n.id?.toLowerCase().includes(q) ||
+            (n.details && n.details.toLowerCase().includes(q))
+        );
+      }
       const candidateIds = new Set(candidateNodes.map((n) => n.id));
 
       const candidateLinks = base.links.filter((l) => {
@@ -505,7 +551,17 @@ export const NetworkPageWorkspace: React.FC = () => {
     }
 
     // 2. Multi-source intelligence visibility filters
-    const visibleNodes = base.nodes.filter((n) => sourceVisibility[n.category] !== false);
+    let visibleNodes = base.nodes.filter((n) => sourceVisibility[n.category] !== false);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      visibleNodes = visibleNodes.filter(
+        (n) =>
+          n.name?.toLowerCase().includes(q) ||
+          n.id?.toLowerCase().includes(q) ||
+          (n.details && n.details.toLowerCase().includes(q)) ||
+          n.category?.toLowerCase().includes(q)
+      );
+    }
     const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
     const visibleLinks = base.links.filter((l) => {
       const sId = typeof l.source === 'object' ? l.source.id : String(l.source);
@@ -516,7 +572,7 @@ export const NetworkPageWorkspace: React.FC = () => {
 
     if (!focusedNodeId) return filteredBase;
     return computeFocusSubgraph(filteredBase, focusedNodeId, focusHops);
-  }, [graphData, isNexusActive, sourceVisibility, focusedNodeId, focusHops]);
+  }, [graphData, isNexusActive, sourceVisibility, focusedNodeId, focusHops, searchQuery]);
 
 
   const focusedNode =
@@ -577,6 +633,26 @@ export const NetworkPageWorkspace: React.FC = () => {
           Dataset scope: contains {seedNodeCount} seeded demo record{seedNodeCount === 1 ? '' : 's'} — flagged nodes originate from the bundled training dataset, not live intelligence
         </div>
       )}
+
+      {/* Geographic Scoping & Active Jurisdiction Control */}
+      <GeographicScopeBar
+        selectedState={selectedState}
+        onStateChange={setSelectedState}
+        selectedDistrict={selectedDistrict}
+        onDistrictChange={setSelectedDistrict}
+        selectedCity={selectedCity}
+        onCityChange={setSelectedCity}
+        scope={investigationScope}
+        onScopeChange={setInvestigationScope}
+        onExpandScope={expandScope}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchGlobal={searchGlobal}
+        onToggleSearchGlobal={toggleSearchGlobal}
+        nodeCount={graphData?.nodes?.length ?? 0}
+        edgeCount={graphData?.links?.length ?? 0}
+        loading={loading}
+      />
 
       {/* Global Explorer Navigation & Filter Toolbar */}
       <GraphExplorerToolbar
@@ -883,34 +959,55 @@ export const NetworkPageWorkspace: React.FC = () => {
         )}
 
         {activeView === 'shortest_path' && (
-          <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-8 h-full min-h-[420px] lg:min-h-[62vh]">
+          <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+            <div className="lg:col-span-4 h-full min-h-[560px] lg:min-h-[70vh]">
               <ShortestPathPanel
                 nodes={graphData?.nodes || []}
                 onCalculatePath={runShortestPath}
                 pathResult={pathResult}
                 loading={pathLoading}
-                onSelectNodeIn3D={setSelectedNode}
+                onSelectNodeIn3D={handleNodeSelect}
+                sourceNodeId={sourceNodeId}
+                targetNodeId={targetNodeId}
+                onSetSourceNodeId={setSourceNodeId}
+                onSetTargetNodeId={setTargetNodeId}
               />
             </div>
-            <div className="lg:col-span-4 h-full min-h-[420px] lg:min-h-[62vh] bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
-              <WorkspaceSidePanel
-                selectedNode={selectedNode}
-                selectedLink={selectedLink}
-                nodes={graphData?.nodes || []}
-                links={graphData?.links || []}
-                emptyMessage="Select any path node to inspect dossier details"
-                onCloseNode={() => setSelectedNode(null)}
-                onCloseLink={() => setSelectedLink(null)}
-                onSelectNode={handleNodeSelect}
-                onSelectLink={handleLinkSelect}
-                onSetPathSource={handleSetPathSource}
-                onSetPathTarget={handleSetPathTarget}
-                onFocusNode={handleFocusNode}
-                onClearFocus={handleClearFocus}
-                isFocused={focusIsSelected}
-                focusHops={focusHops}
-              />
+            <div className="lg:col-span-8 h-full flex flex-col gap-2 min-h-0">
+              <div className="flex-1 min-h-[480px] lg:min-h-[66vh]">
+                <NetworkGraphArea
+                  graphData={displayData}
+                  loading={loading}
+                  error={error}
+                  highlightPath={activeHighlightPath}
+                  selectedNodeId={selectedNode?.id}
+                  onNodeSelect={handleNodeSelect}
+                  onLinkSelect={handleLinkSelect}
+                  onClearSelection={() => setSelectedNode(null)}
+                  onClearFilters={() => setNetworkFilters({})}
+                  suspectOffenderNexus={isNexusActive}
+                  onToggleSuspectOffenderNexus={handleToggleSuspectOffenderNexus}
+                />
+              </div>
+              <div className="h-[200px] shrink-0 bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
+                <WorkspaceSidePanel
+                  selectedNode={selectedNode}
+                  selectedLink={selectedLink}
+                  nodes={graphData?.nodes || []}
+                  links={graphData?.links || []}
+                  emptyMessage="Select any path node or relationship to inspect supporting evidence"
+                  onCloseNode={() => setSelectedNode(null)}
+                  onCloseLink={() => setSelectedLink(null)}
+                  onSelectNode={handleNodeSelect}
+                  onSelectLink={handleLinkSelect}
+                  onSetPathSource={handleSetPathSource}
+                  onSetPathTarget={handleSetPathTarget}
+                  onFocusNode={handleFocusNode}
+                  onClearFocus={handleClearFocus}
+                  isFocused={focusIsSelected}
+                  focusHops={focusHops}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -980,13 +1077,14 @@ export const NetworkPageWorkspace: React.FC = () => {
             gangs={gangs}
             selectedGang={selectedGang}
             onSelectGang={setSelectedGang}
-            onSelectMemberIn3D={setSelectedNode}
+            onSelectMemberIn3D={handleNodeSelect}
+            onSwitchTo3DGraph={() => setActiveView('3d_explorer')}
           />
         )}
 
         {activeView === 'hidden_networks' && (
           <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
-            <div className="lg:col-span-7 h-full min-h-[420px] lg:min-h-[64vh]">
+            <div className="lg:col-span-5 h-full min-h-[560px] lg:min-h-[70vh]">
               <HiddenNetworkPanel
                 nodes={graphData?.nodes || []}
                 result={hiddenNetwork}
@@ -996,33 +1094,52 @@ export const NetworkPageWorkspace: React.FC = () => {
                 maxHops={hiddenMaxHops}
                 onSetMinHops={setHiddenMinHops}
                 onSetMaxHops={setHiddenMaxHops}
-                onRun={() => void runHiddenNetworkDiscovery()}
+                onRun={(name) => void runHiddenNetworkDiscovery(name)}
                 onSelectNodeIn3D={handleSelectHiddenEntity}
+                targetCriminalName={hiddenTargetCriminal}
+                onSetTargetCriminalName={setHiddenTargetCriminal}
               />
             </div>
-            <div className="lg:col-span-5 h-full min-h-[420px] lg:min-h-[64vh] bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
-              <WorkspaceSidePanel
-                selectedNode={selectedNode}
-                selectedLink={selectedLink}
-                nodes={graphData?.nodes || []}
-                links={graphData?.links || []}
-                emptyMessage="Select a hidden-connection entity to inspect its dossier"
-                onCloseNode={() => setSelectedNode(null)}
-                onCloseLink={() => setSelectedLink(null)}
-                onSelectNode={handleNodeSelect}
-                onSelectLink={handleLinkSelect}
-                onSetPathSource={handleSetPathSource}
-                onSetPathTarget={handleSetPathTarget}
-                onFocusNode={handleFocusNode}
-                onClearFocus={handleClearFocus}
-                isFocused={focusIsSelected}
-                focusHops={focusHops}
-              />
+            <div className="lg:col-span-7 h-full flex flex-col gap-2 min-h-0">
+              <div className="flex-1 min-h-[480px] lg:min-h-[66vh]">
+                <NetworkGraphArea
+                  graphData={displayData}
+                  loading={loading}
+                  error={error}
+                  highlightPath={activeHighlightPath}
+                  selectedNodeId={selectedNode?.id}
+                  onNodeSelect={handleNodeSelect}
+                  onLinkSelect={handleLinkSelect}
+                  onClearSelection={() => setSelectedNode(null)}
+                  onClearFilters={() => setNetworkFilters({})}
+                  suspectOffenderNexus={isNexusActive}
+                  onToggleSuspectOffenderNexus={handleToggleSuspectOffenderNexus}
+                />
+              </div>
+              <div className="h-[200px] shrink-0 bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
+                <WorkspaceSidePanel
+                  selectedNode={selectedNode}
+                  selectedLink={selectedLink}
+                  nodes={graphData?.nodes || []}
+                  links={graphData?.links || []}
+                  emptyMessage="Select a hidden-connection entity or intermediate to inspect supporting evidence"
+                  onCloseNode={() => setSelectedNode(null)}
+                  onCloseLink={() => setSelectedLink(null)}
+                  onSelectNode={handleNodeSelect}
+                  onSelectLink={handleLinkSelect}
+                  onSetPathSource={handleSetPathSource}
+                  onSetPathTarget={handleSetPathTarget}
+                  onFocusNode={handleFocusNode}
+                  onClearFocus={handleClearFocus}
+                  isFocused={focusIsSelected}
+                  focusHops={focusHops}
+                />
+              </div>
             </div>
           </div>
         )}
 
-        {activeView === 'link_analysis' && <LinkAnalysisPanel data={linkAnalysis} loading={loading} />}
+        {activeView === 'link_analysis' && <LinkAnalysisPanel data={linkAnalysis} loading={loading} onSelectNodeIn3D={(node) => { handleNodeSelect(node); setActiveView('3d_explorer'); }} />}
 
         {activeView === 'timeline' && (
           <div className="h-full flex flex-col gap-3">
@@ -1070,7 +1187,7 @@ export const NetworkPageWorkspace: React.FC = () => {
         )}
 
         {activeView === 'ai_insights' && (
-          <AIGraphInsightsModal insights={insights} onSelectNodeIn3D={setSelectedNode} />
+          <AIGraphInsightsModal insights={insights} nodes={graphData?.nodes || []} onSelectNodeIn3D={handleNodeSelect} onSwitchTo3DGraph={() => setActiveView('3d_explorer')} />
         )}
       </div>
     </div>

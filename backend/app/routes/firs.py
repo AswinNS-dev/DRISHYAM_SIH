@@ -49,7 +49,10 @@ def list_firs(
             )
         )
     if status:
-        query = query.filter(FIR.status == status)
+        if status in ("in_progress", "investigating", "under_investigation"):
+            query = query.filter(FIR.status.in_(["in_progress", "investigating", "under_investigation"]))
+        else:
+            query = query.filter(FIR.status == status)
     if section:
         query = query.filter(FIR.sections.ilike(f"%{section}%"))
     if officer_id:

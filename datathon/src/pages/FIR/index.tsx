@@ -37,37 +37,30 @@ import { ExportMenu } from "../../components/reports";
 import { CardSkeleton } from "../../components/ui/Skeleton";
 
 const DISTRICTS = [
-  "Bengaluru Urban",
-  "Bengaluru Rural",
-  "Mysuru",
-  "Belagavi",
-  "Dharwad",
-  "Kalaburagi",
-  "Vijayapura",
+  "Ahmedabad",
   "Ballari",
-  "Bidar",
-  "Hassan",
-  "Tumkuru",
-  "Mandya",
-  "Shimoga",
-  "Davanagere",
-  "Chitradurga",
-  "Kodagu",
+  "Belagavi",
+  "Bengaluru Rural",
+  "Bengaluru Urban",
+  "Central Delhi",
+  "Chennai",
   "Chikkamagaluru",
-  "Haveri",
-  "Gadag",
-  "Bagalkote",
-  "Koppal",
-  "Yadagir",
-  "Raichur",
-  "Kolar",
-  "Chikkaballapura",
-  "Ramanagara",
-  "Chamarajanagar",
-  "Vijayanagara",
-  "Dakshina Kannada",
+  "Coimbatore",
+  "Dharwad",
+  "Hyderabad",
+  "Jaipur",
+  "Kalaburagi",
+  "Kolkata",
+  "Lucknow",
+  "Mumbai",
+  "Mysuru",
+  "New Delhi",
+  "Noida",
+  "Pune",
+  "South Delhi",
+  "Surat",
   "Udupi",
-  "Uttara Kannada",
+  "Vijayapura",
 ];
 
 export const FIRPage: React.FC = () => {
@@ -108,8 +101,9 @@ export const FIRPage: React.FC = () => {
       if (response.results?.length > 0 && !selectedFirId && !showForm) {
         setSelectedFirId(response.results[0].id);
       }
-    } catch (err) {
-      setError("Failed to query the FIR database. Check server state.");
+    } catch (err: any) {
+      console.error("Failed to query FIR database:", err);
+      setError(err?.message || "Failed to query the FIR database. Check server state.");
     } finally {
       setIsLoadingList(false);
     }

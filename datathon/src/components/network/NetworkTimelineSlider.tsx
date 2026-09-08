@@ -5,11 +5,11 @@ interface NetworkTimelineSliderProps {
   onDateChange?: (range: [string, string]) => void;
 }
 
-const DATA_START_YEAR = 2025;
+const DATA_START_YEAR = 2024;
 const DATA_END_YEAR = 2026;
 const MIN_INDEX = 1;
-const MAX_INDEX = (DATA_END_YEAR - DATA_START_YEAR + 1) * 12; // 24 months
-const FULL_RANGE: [string, string] = ['2025-01-01', '2026-12-31'];
+const MAX_INDEX = (DATA_END_YEAR - DATA_START_YEAR + 1) * 12; // 36 months
+const FULL_RANGE: [string, string] = ['2024-01-01', '2026-12-31'];
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -35,7 +35,7 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
   const [isPlaying, setIsPlaying] = useState(false);
   const [step, setStep] = useState(MAX_INDEX);
 
-  const range = useMemo<[string, string]>(() => ['2025-01-01', monthEndDate(step)], [step]);
+  const range = useMemo<[string, string]>(() => ['2024-01-01', monthEndDate(step)], [step]);
 
   // Auto-play scrubs the window forward until it reaches the full range, then stops.
   useEffect(() => {
@@ -53,7 +53,7 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
     setStep(val);
-    onDateChange?.(['2025-01-01', monthEndDate(val)]);
+    onDateChange?.(['2024-01-01', monthEndDate(val)]);
   };
 
   const handleReset = () => {
@@ -100,7 +100,7 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
         </span>
       </div>
       <div className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">
-        Window: Jan 25 &rarr; {monthLabel(step)} ({range[1]} end-of-month)
+        Window: Jan 24 &rarr; {monthLabel(step)} ({range[1]} end-of-month)
       </div>
     </div>
   );

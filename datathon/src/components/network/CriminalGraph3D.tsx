@@ -86,18 +86,6 @@ const GEOMETRIES: Record<string, { outer: THREE.BufferGeometry; inner: THREE.Buf
     outer: new THREE.OctahedronGeometry(14.5, 0),
     inner: new THREE.OctahedronGeometry(7.5, 0),
   },
-  vehicle: {
-    outer: new THREE.BoxGeometry(9.0, 4.5, 5.0),
-    inner: new THREE.BoxGeometry(5.0, 2.5, 3.0),
-  },
-  gang: {
-    outer: new THREE.DodecahedronGeometry(7.5, 0),
-    inner: new THREE.DodecahedronGeometry(4.0, 0),
-  },
-  organization: {
-    outer: new THREE.DodecahedronGeometry(7.5, 0),
-    inner: new THREE.DodecahedronGeometry(4.0, 0),
-  },
   default: {
     outer: new THREE.SphereGeometry(13.0, 16, 16),
     inner: new THREE.SphereGeometry(7.0, 12, 12),
@@ -1299,49 +1287,6 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({
                   <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-0.5 rounded border border-[#1E293B]">
                     <span className="w-3.5 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                     <span className="text-cyan-300 font-semibold">Communication (CDR)</span>
-                </>
-              ) : (
-                <>
-                  {/* Entity Shapes Section */}
-                  <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1.5">
-                    <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
-                      Multi-Source Entities
-                    </span>
-
-                    <div className="grid grid-cols-2 gap-1 text-[9px]">
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)] shrink-0" />
-                        <span className="text-slate-200 truncate">Suspect</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#F97316] shadow-[0_0_6px_rgba(249,115,22,0.8)] shrink-0" />
-                        <span className="text-slate-200 truncate">Offender</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <svg className="w-2.5 h-2.5 text-[#06B6D4] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                          <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
-                        </svg>
-                        <span className="text-cyan-300 truncate">CDR (Hex)</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <svg className="w-2.5 h-2.5 text-[#F59E0B] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                          <polygon points="8,1 15,8 8,15 1,8" />
-                        </svg>
-                        <span className="text-amber-300 truncate">Financial</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <svg className="w-2.5 h-2.5 text-[#A855F7] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                          <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
-                        </svg>
-                        <span className="text-purple-300 truncate">Surveillance</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#0F172A] px-1.5 py-1 rounded border border-[#1E293B]">
-                        <svg className="w-2.5 h-2.5 text-[#3B82F6] shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                          <polygon points="5,1.5 11,1.5 14.5,5 14.5,11 11,14.5 5,14.5 1.5,11 1.5,5" />
-                        </svg>
-                        <span className="text-blue-300 truncate">Social Intel</span>
-                      </div>
-                    </div>
                   </div>
                 </>
               ) : (

@@ -54,6 +54,8 @@ export interface UserSession {
   name: string;
   badgeId: string;
   role: UserRole;
+  district?: string | null;
+  station?: string | null;
 }
 
 interface AuthState {
@@ -85,6 +87,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           name: currentUser.full_name,
           badgeId: currentUser.username,
           role: mapBackendRoleToUiRole(currentUser.role),
+          district: currentUser.district,
+          station: currentUser.station,
         },
         isAuthenticated: true,
         loginError: null,
@@ -101,19 +105,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      if (accessToken) {
-        await hydrateFromBackendUser();
-        return;
-      }
-
-      const tokens = await refreshSession(refreshToken);
-      setStoredTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
       await hydrateFromBackendUser();
     } catch {
       if (refreshToken) {
         try {
-          const tokens = await refreshSession(refreshToken);
-          setStoredTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
+          const newTokens = await refreshSession(refreshToken);
+          setStoredTokens({ accessToken: newTokens.access_token, refreshToken: newTokens.refresh_token });
           await hydrateFromBackendUser();
           return;
         } catch {
@@ -141,6 +138,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           name: currentUser.full_name,
           badgeId: currentUser.username,
           role: mapBackendRoleToUiRole(currentUser.role),
+          district: currentUser.district,
+          station: currentUser.station,
         },
         isAuthenticated: true,
         loginError: null,

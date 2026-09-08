@@ -56,4 +56,20 @@ describe('getFullNetworkGraph filter query building (issue #226)', () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v2/network/graph?exclude_demo=false');
   });
+
+  it('passes state, district, city, and scope parameters for geographic scoping', async () => {
+    await getFullNetworkGraph(undefined, undefined, undefined, false, {
+      state: 'Karnataka',
+      district: 'Dharwad',
+      city: 'Hubli City Police Station',
+      scope: 'city',
+      limit: 350,
+    });
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain('state=Karnataka');
+    expect(url).toContain('district=Dharwad');
+    expect(url).toContain('city=Hubli+City+Police+Station');
+    expect(url).toContain('scope=city');
+    expect(url).toContain('limit=350');
+  });
 });

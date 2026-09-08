@@ -59,10 +59,12 @@ class FIRBase(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        allowed = {"registered", "in_progress", "closed", "open", "active"}
+        allowed = {"registered", "in_progress", "closed", "open", "active", "investigating", "under_investigation"}
         val = v.strip().lower()
         if val not in allowed:
             raise ValueError(f"Status must be one of {allowed}")
+        if val in ("investigating", "under_investigation"):
+            return "in_progress"
         return val
 
 
@@ -114,10 +116,12 @@ class FIRUpdate(BaseModel):
     def validate_status(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        allowed = {"registered", "in_progress", "closed", "open", "active"}
+        allowed = {"registered", "in_progress", "closed", "open", "active", "investigating", "under_investigation"}
         val = v.strip().lower()
         if val not in allowed:
             raise ValueError(f"Status must be one of {allowed}")
+        if val in ("investigating", "under_investigation"):
+            return "in_progress"
         return val
 
 
